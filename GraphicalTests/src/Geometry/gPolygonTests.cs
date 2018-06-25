@@ -28,7 +28,7 @@ namespace Graphical.Geometry.Tests
             gPolygon triangleXZPlane = gPolygon.ByVertices(new List<gVertex>() { a, g, h });
 
             Assert.IsTrue(gPolygon.IsPlanar(pol1));
-            Assert.IsFalse(gPolygon.IsPlanar(pol2));
+            Assert.IsTrue(gPolygon.IsPlanar(pol2));
             Assert.IsTrue(gPolygon.IsPlanar(triangleXZPlane));
 
 
