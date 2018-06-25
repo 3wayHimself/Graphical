@@ -152,6 +152,30 @@ namespace Graphical.Geometry
             //return (intersections % 2 == 0) ? false : true;
             return windNumber != 0;
         }
+
+        /// <summary>
+        /// Checks if a polygon is planar
+        /// </summary>
+        /// <param name="polygon"></param>
+        /// <returns>boolean</returns>
+        public static bool IsPlanar(gPolygon polygon)
+        {
+            return gVertex.Coplanar(polygon.Vertices);
+        }
+
+        /// <summary>
+        /// Checks if two gPolygons are coplanar.
+        /// </summary>
+        /// <param name="polygon"></param>
+        /// <param name="otherPolygon"></param>
+        /// <returns></returns>
+        public static bool Coplanar(gPolygon polygon, gPolygon otherPolygon)
+        {
+            List<gVertex> joinedVertices = new List<gVertex>(polygon.Vertices);
+            joinedVertices.AddRange(otherPolygon.Vertices);
+
+            return gVertex.Coplanar(joinedVertices);
+        }
         #endregion
 
         public object Clone()
