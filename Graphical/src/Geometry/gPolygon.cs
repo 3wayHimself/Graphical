@@ -67,7 +67,7 @@ namespace Graphical.Geometry
         #endregion
 
         #region Public Constructos
-        public static gPolygon ByVertices(List<gVertex> vertices, bool isExternal)
+        public static gPolygon ByVertices(List<gVertex> vertices, bool isExternal = false)
         {
             gPolygon polygon = new gPolygon(-1, isExternal);
             polygon.vertices = vertices;
@@ -156,7 +156,7 @@ namespace Graphical.Geometry
         /// <summary>
         /// Checks if a polygon is planar
         /// </summary>
-        /// <param name="polygon"></param>
+        /// <param name="polygon">gPolygon</param>
         /// <returns>boolean</returns>
         public static bool IsPlanar(gPolygon polygon)
         {
@@ -166,8 +166,8 @@ namespace Graphical.Geometry
         /// <summary>
         /// Checks if two gPolygons are coplanar.
         /// </summary>
-        /// <param name="polygon"></param>
-        /// <param name="otherPolygon"></param>
+        /// <param name="polygon">gPolygon</param>
+        /// <param name="otherPolygon">Other gPolygon</param>
         /// <returns></returns>
         public static bool Coplanar(gPolygon polygon, gPolygon otherPolygon)
         {
