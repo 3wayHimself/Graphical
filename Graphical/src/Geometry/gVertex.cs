@@ -62,7 +62,7 @@ namespace Graphical.Geometry
         }
         #endregion
                 
-        internal static List<gVertex> OrderByRadianAndDistance (List<gVertex> vertices, gVertex centre = null)
+        public static List<gVertex> OrderByRadianAndDistance (List<gVertex> vertices, gVertex centre = null)
         {
             if(centre == null) { centre = gVertex.MinimumVertex(vertices); }
             return vertices.OrderBy(v => RadAngle(centre, v)).ThenBy(v => centre.DistanceTo(v)).ToList();
@@ -161,12 +161,12 @@ namespace Graphical.Geometry
             return numerator.Length / denominator.Length;
         }
         
-        internal gVertex Translate(gVector vector)
+        public gVertex Translate(gVector vector)
         {
             return gVertex.ByCoordinates(this.X + vector.X, this.Y + vector.Y, this.Z + vector.Z);
         }
 
-        internal gVertex Translate(gVector vector, double distance)
+        public gVertex Translate(gVector vector, double distance)
         {
             gVector normalized = vector.Normalized();
             gVector distVector = normalized * distance;
@@ -191,6 +191,23 @@ namespace Graphical.Geometry
             return 0 <= dotAC && dotAC <= dotAB;
         }
 
+        /// <summary>
+        /// Checks if a list of vertices are coplanar. True for three or less vertices.
+        /// </summary>
+        /// <param name="vertices"></param>
+        /// <returns>Boolean</returns>
+        public static bool Coplanar(List<gVertex> vertices)
+        {
+            // https://math.stackexchange.com/questions/1330357/show-that-four-points-are-coplanar
+            if (!vertices.Any()) { throw new ArgumentOutOfRangeException("vertices", "Vertices list cannot be empty"); }
+            if (vertices.Count <= 3) { return true; }
+            gVector ab = gVector.ByTwoVertices(vertices[0], vertices[1]);
+            gVector ac = gVector.ByTwoVertices(vertices[0], vertices[2]);
+            gVector cross = ab.Cross(ac);
+
+            return vertices.Skip(3).All(vtx => Threshold(gVector.ByTwoVertices(vertices[0], vtx).Dot(cross), 0));
+        }
+
         internal static bool OnEdgeProjection(gVertex start, gVertex point, gVertex end, string plane = "xy")
         {
             double x = point.X, y = point.Y, z = point.Z;
@@ -211,11 +228,6 @@ namespace Graphical.Geometry
                     throw new Exception("Plane not defined");
             }
         }
-
-        //public DSPoint AsPoint()
-        //{
-        //    return DSPoint.ByCoordinates(this.X, this.Y, this.Z);
-        //}
 
         #region Override Methods
         //TODO: Improve overriding equality methods as per http://www.loganfranken.com/blog/687/overriding-equals-in-c-part-1/
