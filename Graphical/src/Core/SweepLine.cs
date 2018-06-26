@@ -12,9 +12,9 @@ namespace Graphical.Core
     /// Helper class to implement Bentley-Ottmann Algorithm for
     /// polygon self-intersections and boolean operations.
     /// </summary>
-    public static class SweepLine
+    public class SweepLine
     {
-
+        
 
         
     }
@@ -23,11 +23,49 @@ namespace Graphical.Core
     {
         public gVertex Vertex;
         public SweepVertex Pair;
+        public gEdge Edge;
         public bool IsStart;
 
         public int CompareTo(SweepVertex other)
         {
-            throw new NotImplementedException();
+            if(other == null) { return -1; }
+            if (this.Vertex.Equals(other.Vertex)) { return 0; }
+            // If same X
+            if(gBase.Threshold(this.Vertex.X, other.Vertex.X))
+            {
+                // If same Y
+                if(gBase.Threshold(this.Vertex.Y, other.Vertex.Y))
+                {
+                    return 0;
+                }
+                else
+                {
+                    return (this.Vertex.Y < other.Vertex.Y) ? -1 : 1;
+                }
+            }else
+            {
+                return (this.Vertex.X < other.Vertex.X) ? -1 : 1;
+            }
+        }
+
+        public static bool operator <(SweepVertex sw1, SweepVertex sw2)
+        {
+            return sw1.CompareTo(sw2) == -1;
+        }
+
+        public static bool operator >(SweepVertex sw1, SweepVertex sw2)
+        {
+            return sw1.CompareTo(sw2) == 1;
+        }
+
+        public static bool operator <=(SweepVertex sw1, SweepVertex sw2)
+        {
+            return sw1.CompareTo(sw2) <= 0;
+        }
+
+        public static bool operator >=(SweepVertex sw1, SweepVertex sw2)
+        {
+            return sw1.CompareTo(sw2) >= 0;
         }
     }
 }
