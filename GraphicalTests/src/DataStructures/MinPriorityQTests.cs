@@ -49,7 +49,7 @@ namespace Graphical.DataStructures.Tests
             minQ.Add("uno", 1);
             Assert.AreEqual(4, minQ.Size);
             Assert.AreEqual("uno", minQ.Peek());
-            minQ.UpdateValue("diez", 0);
+            minQ.UpdateItem("diez", 0);
             Assert.AreEqual("diez", minQ.Peek());
 
         }

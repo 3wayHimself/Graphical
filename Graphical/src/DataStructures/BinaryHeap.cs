@@ -203,6 +203,15 @@ namespace Graphical.DataStructures
         #region Public Methods
 
         /// <summary>
+        /// Determines whether the heap contains any element.
+        /// </summary>
+        /// <returns></returns>
+        public virtual bool Any()
+        {
+            return _heapItems.Any();
+        }
+
+        /// <summary>
         /// Returns first TObject from the Heap
         /// </summary>
         /// <returns>Object of first item.</returns>
@@ -386,7 +395,7 @@ namespace Graphical.DataStructures
     /// <summary>
     /// Class to use in BinaryHeaps when the object is not of type IComparable
     /// </summary>
-    public class HeapItem : IComparable<HeapItem>
+    public class HeapItem : IEquatable<HeapItem>, IComparable<HeapItem>
     {
         #region Properties
         /// <summary>
@@ -428,11 +437,9 @@ namespace Graphical.DataStructures
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
-        public override bool Equals(object obj)
+        public bool Equals(HeapItem obj)
         {
-            if (obj.GetType() != typeof(HeapItem)) { return false; }
-            HeapItem item = (HeapItem)obj;
-            return this.Item.Equals(item.Item) && this.Value.Equals(item.Value);
+            return this.Item.Equals(obj.Item);
         }
 
         /// <summary>
@@ -441,7 +448,7 @@ namespace Graphical.DataStructures
         /// <returns></returns>
         public override int GetHashCode()
         {
-            return Item.GetHashCode() ^ Value.GetHashCode();
+            return Item.GetHashCode();
         }
 
         /// <summary>
