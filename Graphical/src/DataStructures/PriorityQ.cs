@@ -71,27 +71,27 @@ namespace Graphical.DataStructures
         /// <summary>
         /// Updates the TObject item and restores the Heap property
         /// </summary>
-        /// <param name="newItem">Existing TObject in Heap with new comparison value</param>
-        public void UpdateItem(TObject newItem)
+        /// <param name="index">Existing TObject in Heap with new comparison value</param>
+        public void UpdateAtIndex(int index)
         {
-            if (!heapIndices.ContainsKey(newItem)) { throw new ArgumentException("Element not existing in Priority Queue"); }
-            int heapIndex = heapIndices[newItem];
-            TObject currentItem = _heapItems[heapIndex];
+            //if (!heapIndices.ContainsKey(newItem)) { throw new ArgumentException("Element not existing in Priority Queue"); }
+            //int heapIndex = heapIndices[newItem];
+            TObject item = _heapItems[index];
             //IComparable currentValue = heapItem.Value;
             //heapItem.SetValue(newValue);
 
-            int comparison = newItem.CompareTo(currentItem);
+            int comparison = item.CompareTo(this.Parent(index));
             // Update item in Heap
-            _heapItems[heapIndex] = newItem;
+            //_heapItems[heapIndex] = newItem;
 
             if ( (HeapType == BinaryHeapType.MinHeap && comparison < 0) ||
                 (HeapType == BinaryHeapType.MaxHeap && comparison > 0))
             {
-                HeapifyUp(heapIndex);
+                HeapifyUp(index);
             }
             else
             {
-                HeapifyDown(heapIndex);
+                HeapifyDown(index);
             }
         }
 
@@ -113,6 +113,23 @@ namespace Graphical.DataStructures
             TObject first = (TObject)base.Take();
             heapIndices.Remove(first);
             return first;
+        }
+
+        /// <summary>
+        /// Returns the index of an item. If item no in PriorityQ, returns -1
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public int IndexOf(TObject item)
+        {
+            if (heapIndices.ContainsKey(item))
+            {
+                return heapIndices[item];
+            }
+            else
+            {
+                return -1;
+            }
         }
 
         /// <summary>
@@ -205,7 +222,10 @@ namespace Graphical.DataStructures
         public void UpdateItem(TObject item, TValue value)
         {
             HeapItem newItem = new HeapItem(item, value);
-            base.UpdateItem(newItem);
+            if (!heapIndices.ContainsKey(newItem)) { throw new ArgumentException("Element not existing in Priority Queue"); }
+            int heapIndex = heapIndices[newItem];
+            _heapItems[heapIndex] = newItem;
+            base.UpdateAtIndex(heapIndex);
         }
     }
 

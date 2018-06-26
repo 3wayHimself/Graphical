@@ -208,7 +208,7 @@ namespace Graphical.DataStructures
         /// <returns></returns>
         public virtual bool Any()
         {
-            return _heapItems.Any();
+            return Size > 0;
         }
 
         /// <summary>
