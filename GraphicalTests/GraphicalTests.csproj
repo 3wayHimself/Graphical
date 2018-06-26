@@ -82,7 +82,7 @@
     <Compile Include="src\Geometry\gPolygonTests.cs" />
     <Compile Include="src\Geometry\gVectorTests.cs" />
     <Compile Include="src\Geometry\gVertexTests.cs" />
-    <Compile Include="src\Core\ListTests.cs" />
+    <Compile Include="src\Extensions\NumericTests.cs" />
     <Compile Include="src\DataStructures\BinaryHeapTests.cs" />
     <Compile Include="src\DataStructures\HeapItemTests.cs" />
     <Compile Include="src\DataStructures\MinPriorityQTests.cs" />

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Graphical.Geometry;
+using Graphical.Extensions;
 using System.Diagnostics;
 #endregion
 
@@ -164,7 +165,7 @@ namespace Graphical.Graphs
                     if (e.StartVertex.OnEdge(halfEdge)) { continue; }
                     if (e.EndVertex.OnEdge(halfEdge)) { continue; }
                     EdgeKey k = new EdgeKey(halfEdge, e);
-                    Core.List.AddItemSorted(openEdges, k);
+                    openEdges.AddItemSorted(k);
                 }
             }
            
@@ -189,7 +190,7 @@ namespace Graphical.Graphs
                         if (orientation == -1)
                         {
                             EdgeKey k = new EdgeKey(centre, vertex, edge);
-                            int index = Core.List.Bisect(openEdges, k) - 1;
+                            int index = openEdges.BisectIndex(k) - 1;
                             index = (index < 0) ? openEdges.Count - 1 : index;
                             if (openEdges.Count > 0 && openEdges.ElementAt(index).Equals(k))
                             {
@@ -306,7 +307,7 @@ namespace Graphical.Graphs
                         if (!e.Contains(centre) && gVertex.Orientation(centre, vertex, e.GetVertexPair(vertex)) == 1)
                         {
                             EdgeKey k = new EdgeKey(centre, vertex, e);
-                            Core.List.AddItemSorted(openEdges, k);
+                            openEdges.AddItemSorted(k);
                         }
                     }
                 }
@@ -554,7 +555,7 @@ namespace Graphical.Graphs
             int min = connected.Min();
             int max = connected.Max();
 
-            return connected.Select(x => Core.List.Map(x, min, max, 0, 1)).ToList();
+            return connected.Select(x => Convert.ToDouble(x).Map(min, max, 0, 1)).ToList();
         }
 
         #endregion

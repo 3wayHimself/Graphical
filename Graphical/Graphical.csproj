@@ -93,6 +93,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="src\Algorithms\Algorithms.cs" />
     <Compile Include="src\Core\SweepLine.cs" />
+    <Compile Include="src\Extensions\NumericExtensions.cs" />
     <Compile Include="src\Geometry\gPolygon.cs" />
     <Compile Include="src\Geometry\gVector.cs" />
     <Compile Include="src\DataStructures\BinaryHeap.cs" />
@@ -100,7 +101,7 @@
     <Compile Include="src\Graphs\Graph.cs" />
     <Compile Include="src\Geometry\gVertex.cs" />
     <Compile Include="src\Geometry\gEdge.cs" />
-    <Compile Include="src\Core\List.cs" />
+    <Compile Include="src\Extensions\ListExtensions.cs" />
     <Compile Include="src\Graphs\VisibilityGraph.cs" />
     <Compile Include="src\Geometry\gBase.cs" />
   </ItemGroup>
