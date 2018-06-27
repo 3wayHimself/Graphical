@@ -20,14 +20,16 @@ namespace Graphical.Extensions
         /// <typeparam name="T">IComparable</typeparam>
         /// <param name="list"></param>
         /// <param name="item"></param>
-        public static void AddItemSorted<T>(this List<T> list, T item) where T : IComparable<T>
+        /// <param name="comparer"></param>
+        public static void AddItemSorted<T>(this List<T> list, T item, IComparer<T> comparer = null) where T : IComparable<T>
         {
             int lo = 0;
             int hi = list.Count();
             while (lo < hi)
             {
                 int mid = (int)(lo + hi) / 2;
-                if (item.CompareTo(list[mid]) < 0)
+                int comparison = (comparer != null) ? comparer.Compare(item, list[mid]) : item.CompareTo(list[mid]);
+                if (comparison < 0)
                 {
                     hi = mid;
                 }
@@ -46,11 +48,12 @@ namespace Graphical.Extensions
         /// <typeparam name="T">IComparable</typeparam>
         /// <param name="list"></param>
         /// <param name="items"></param>
-        public static void AddItemsSorted<T>(this List<T> list, T[] items) where T : IComparable<T>
+        /// <param name="comparer"></param>
+        public static void AddItemsSorted<T>(this List<T> list, T[] items, IComparer<T> comparer = null) where T : IComparable<T>
         {
             foreach(var item in items)
             {
-                list.AddItemSorted<T>(item);
+                list.AddItemSorted<T>(item, comparer);
             }
         }
 
@@ -62,13 +65,15 @@ namespace Graphical.Extensions
         /// <param name="list"></param>
         /// <param name="item"></param>
         /// <returns name="index">Item's index</returns>
-        public static int BisectIndex<T> (this List<T> list, T item) where T : IComparable<T>
+        /// <param name="comparer"></param>
+        public static int BisectIndex<T> (this List<T> list, T item, IComparer<T> comparer = null) where T : IComparable<T>
         {
             int lo = 0, hi = list.Count;
             while (lo < hi)
             {
                 int mid = (lo + hi) / 2;
-                if (item.CompareTo(list[mid]) < 0)
+                int comparison = (comparer != null) ? comparer.Compare(item, list[mid]) : item.CompareTo(list[mid]);
+                if (comparison < 0)
                 {
                     hi = mid;
                 }
