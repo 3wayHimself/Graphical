@@ -99,6 +99,7 @@ namespace Graphical.Geometry
         {
             // http://mathworld.wolfram.com/Line-LineIntersection.html
             if (!this.IsCoplanarTo(other)) { return null; }
+            if (this.Equals(other)) { return this; } // Issues if same polygon id???
             if (other.Contains(this.StartVertex)) { return StartVertex; }
             if (other.Contains(this.EndVertex)) { return EndVertex; }
 
