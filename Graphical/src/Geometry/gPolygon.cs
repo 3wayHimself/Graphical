@@ -124,35 +124,41 @@ namespace Graphical.Geometry
             double maxDistance = vertex.DistanceTo(maxVertex) * 1.5;
             gVertex v2 = gVertex.ByCoordinates(vertex.X + maxDistance, vertex.Y, vertex.Z);
             gEdge ray = gEdge.ByStartVertexEndVertex(vertex, v2);
-            gVertex coincident = null;
             int windNumber = 0;
             foreach (gEdge edge in edges)
             {
                 gBase intersection = ray.Intersection(edge);
-                if (edge.StartVertex.Y <= vertex.Y)
+                if (intersection  is gVertex)
                 {
-                    
-                    if (edge.EndVertex.Y > vertex.Y && intersection != null && intersection.GetType() == typeof(gVertex))
+                    gVertex vtx = (gVertex)intersection;
+                    if (edge.StartVertex.Y <= vertex.Y)
                     {
-                        ++windNumber;
+                        // If interection is a vertex from the ray edge, don't count it
+                        if (edge.EndVertex.Y > vertex.Y && !ray.Contains(vtx))
+                        {
+                            ++windNumber;
+                        }
+                    }
+                    else
+                    {
+                        if (edge.EndVertex.Y <= vertex.Y)
+                        {
+                            --windNumber;
+                        }
                     }
                 }
-                else
-                {
-                    if (edge.EndVertex.Y <= vertex.Y && intersection != null && intersection.GetType() == typeof(gVertex))
-                    {
-                        --windNumber;
-                    }
-                }
-
-                
             }
 
-            //If intersections is odd, returns true, false otherwise
-            //return (intersections % 2 == 0) ? false : true;
+            // If windNumber is different from 0, vertex is in polygon
             return windNumber != 0;
         }
 
+        public bool ContainsEdge(gEdge edge)
+        {
+            return this.ContainsVertex(edge.StartVertex)
+                && this.ContainsVertex(edge.EndVertex)
+                && this.ContainsVertex(gVertex.MidVertex(edge.StartVertex, edge.EndVertex));
+        }
         /// <summary>
         /// Checks if a polygon is planar
         /// </summary>

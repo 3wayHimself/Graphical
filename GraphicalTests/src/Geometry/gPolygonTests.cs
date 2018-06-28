@@ -30,7 +30,44 @@ namespace Graphical.Geometry.Tests
             Assert.IsTrue(gPolygon.IsPlanar(pol1));
             Assert.IsTrue(gPolygon.IsPlanar(pol2));
             Assert.IsTrue(gPolygon.IsPlanar(triangleXZPlane));
+        }
 
+        [Test]
+        public void ContainsVertexTest()
+        {
+            var a = gVertex.ByCoordinates(0, 0);
+            var b = gVertex.ByCoordinates(0, 10);
+            var c = gVertex.ByCoordinates(5, 15);
+            var d = gVertex.ByCoordinates(10, 10);
+            var e = gVertex.ByCoordinates(10, 0);
+            var vtx1 = gVertex.ByCoordinates(0, 5);
+            var vtx2 = gVertex.ByCoordinates(5, 5);
+            var vtx3 = gVertex.ByCoordinates(10, 5);
+            var vtx4 = gVertex.ByCoordinates(0, 15);
+            gPolygon pol1 = gPolygon.ByVertices(new List<gVertex>() { a, b, c, d, e });
+
+            Assert.IsTrue(pol1.ContainsVertex(vtx1));
+            Assert.IsTrue(pol1.ContainsVertex(vtx2));
+            Assert.IsTrue(pol1.ContainsVertex(vtx3));
+            Assert.IsFalse(pol1.ContainsVertex(vtx4));
+        }
+
+        [Test]
+        public void ContainsEdgeTest()
+        {
+            var a = gVertex.ByCoordinates(0, 0);
+            var b = gVertex.ByCoordinates(0, 10);
+            var c = gVertex.ByCoordinates(10, 10);
+            var d = gVertex.ByCoordinates(10, 0);
+            var vtx1 = gVertex.ByCoordinates(0, 5);
+            var vtx2 = gVertex.ByCoordinates(5, 5);
+            var vtx3 = gVertex.ByCoordinates(10, 5);
+            var vtx4 = gVertex.ByCoordinates(5, 15);
+            gPolygon pol1 = gPolygon.ByVertices(new List<gVertex>() { a, b, c, d });
+
+            Assert.IsTrue(pol1.ContainsEdge(gEdge.ByStartVertexEndVertex(vtx1, vtx2)));
+            Assert.IsTrue(pol1.ContainsEdge(gEdge.ByStartVertexEndVertex(vtx1, vtx3)));
+            Assert.IsFalse(pol1.ContainsEdge(gEdge.ByStartVertexEndVertex(vtx1, vtx4)));
 
         }
     }
