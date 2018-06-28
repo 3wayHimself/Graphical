@@ -108,7 +108,7 @@ namespace Graphical.Geometry
 
         public bool IsParallelTo(gVector vector)
         {
-            var dot = this.Normalized().Dot(vector.Normalized());
+            var dot = Math.Abs(this.Normalized().Dot(vector.Normalized()));
             return Threshold(dot, 1);
         }
 
