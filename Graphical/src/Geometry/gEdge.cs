@@ -103,61 +103,48 @@ namespace Graphical.Geometry
 
             var a = this.Direction;
             var b = other.Direction;
-            var c = gVector.ByTwoVertices(this.StartVertex, other.StartVertex);
-            var cxb = c.Cross(b);
-            var axb = a.Cross(b);
-            var dot = cxb.Dot(axb);
-            var areParallels = a.IsParallelTo(b);
-
-            if (other.Contains(this.StartVertex))
+            
+            if (a.IsParallelTo(b))
             {
-                if(areParallels) { return (this.Length < other.Length) ? this : other; }
-                else { return this.StartVertex; }
-            }
-            if (other.Contains(this.EndVertex))
-            {
-                if (areParallels) { return (this.Length < other.Length) ? this : other; }
-                else { return this.EndVertex; }
-            }
-
-            // If dot == 0 it means that other edge contains at least a vertex from this edge
-            // and they are parallel or perpendicular
-            if (Threshold(dot, 0))
-            {
-                // If edges are parallel
-                if (a.IsParallelTo(b))
+                // Fully contains the test edge
+                if (other.StartVertex.OnEdge(this) && other.EndVertex.OnEdge(this)) { return other; }
+                // Is fully contained by test edge
+                else if (this.StartVertex.OnEdge(other) && this.EndVertex.OnEdge(other)) { return this; }
+                // Not fully inclusive but overlapping
+                else if (this.StartVertex.OnEdge(other) || this.EndVertex.OnEdge(other))
                 {
-                    // Fully contains the test edge
-                    if (other.StartVertex.OnEdge(this) && other.EndVertex.OnEdge(this))
+                    gVertex[] vertices = new gVertex[4]
                     {
-                        return other;
-                    }
-                    // Is fully contained by test edge
-                    else if (this.StartVertex.OnEdge(other) && this.EndVertex.OnEdge(other))
-                    {
-                        return this;
-                    }
-                    else if (this.StartVertex.OnEdge(other) || this.EndVertex.OnEdge(other))
-                    {
-                        gVertex[] vertices = new gVertex[4]
-                        {
                         this.StartVertex,
                         this.EndVertex,
                         other.StartVertex,
                         other.EndVertex
-                        };
-                        var sorted = vertices.OrderBy(v => v.Y).ThenBy(v => v.X).ThenBy(v => v.Z).ToList();
-                        return gEdge.ByStartVertexEndVertex(sorted[1], sorted[2]);
-                    }
-                    else
-                    {
-                        return null;
-                    }
+                    };
+                    var sorted = vertices.OrderBy(v => v.Y).ThenBy(v => v.X).ThenBy(v => v.Z).ToList();
+                    return gEdge.ByStartVertexEndVertex(sorted[1], sorted[2]);
                 }
+                // Not intersecting
                 else
                 {
-                    return (this.StartVertex.OnEdge(other)) ? this.StartVertex : this.EndVertex;
+                    return null;
                 }
+            }
+
+            // No parallels but intersecting on one of the extreme vertices
+            if (other.Contains(this.StartVertex)) { return this.StartVertex; }
+            if (other.Contains(this.EndVertex)) { return this.EndVertex; }
+
+            // No coincident nor same extremes
+            var c = gVector.ByTwoVertices(this.StartVertex, other.StartVertex);
+            var cxb = c.Cross(b);
+            var axb = a.Cross(b);
+            var dot = cxb.Dot(axb);
+
+            // If dot == 0 it means that other edge contains at least a vertex from this edge
+            // and they are parallel or perpendicular. Cannot be parallel as 
+            if (Threshold(dot, 0))
+            {
+                return (this.StartVertex.OnEdge(other)) ? this.StartVertex : this.EndVertex;
             }
 
             double s = (dot) / Math.Pow(axb.Length, 2);
