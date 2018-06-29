@@ -15,12 +15,23 @@ namespace Graphical.Core
         Polygonal
     }
 
+    public enum SweepEventLabel
+    {
+        NoContributing,
+        SameTransition,
+        DifferentTransition
+    }
+
     /// <summary>
     /// Helper class to implement Bentley-Ottmann Algorithm for
     /// polygon self-intersections and boolean operations.
     /// </summary>
     public class SweepLine
     {
+#if DEBUG
+        public List<int> coincidentCase = new List<int>();
+#endif
+
         #region Internal Properties
         internal SweepLineType type;
         internal MinPriorityQ<SweepEvent> eventsQ;
@@ -116,6 +127,7 @@ namespace Graphical.Core
         #endregion
 
         // TODO: Check if BoundingBoxes intersect first to avoid unnecessary computation if they don't
+        // TODO: Check no coplanar edges.
         internal List<gBase> FindIntersections()
         {
             List<gBase> tempIntersections = new List<gBase>();
@@ -150,38 +162,141 @@ namespace Graphical.Core
 
             return tempIntersections;
         }
-        
-        internal void ProcessIntersection(SweepEvent swEvent, SweepEvent swOther, List<gBase> intersections)
+
+        internal void UpdateEventPair(SweepEvent swEvent, gVertex newVertexPair)
         {
-            gBase intersection = swEvent.Edge.Intersection(swOther.Edge);
-            if(intersection == null) { return; }
-            if(intersection is gVertex)
+            var pairEvent = swEvent.Pair;
+            int index = eventsQ.IndexOf(pairEvent);
+
+            // Update event and its pair with the new pair vertex 
+            swEvent.UpdatePairVertex(newVertexPair);
+            pairEvent.UpdatePairVertex(newVertexPair);
+
+            // Update position of pairEvent in PriorityQ according to its new pair.
+            eventsQ.UpdateAtIndex(index);
+
+            // Add both new pairs to the PriorityQ
+            eventsQ.Add(swEvent.Pair);
+            eventsQ.Add(pairEvent.Pair);
+        }
+        
+        internal void ProcessIntersection(SweepEvent next, SweepEvent prev, List<gBase> intersections)
+        {
+            gBase intersection = next.Edge.Intersection(prev.Edge);
+            bool inserted = false;
+            #region is gVertex
+            if (intersection is gVertex)
             {
-                gVertex vtx = intersection as gVertex;
+                gVertex v = intersection as gVertex;
                 // Intersection is between extremes vertices
-                foreach (SweepEvent sw in new List<SweepEvent>() { swEvent, swOther })
+                foreach (SweepEvent sw in new List<SweepEvent>() { next, prev })
                 {
-                    if (!sw.Edge.Contains(vtx))
+                    if (!sw.Edge.Contains(v))
                     {
-                        if (!intersections.Contains(vtx)) { intersections.Add(vtx); }
-
-                        var pairEvent = sw.Pair;
-                        int index = eventsQ.IndexOf(pairEvent);
-
-                        sw.UpdatePairVertex(vtx);
-                        pairEvent.UpdatePairVertex(vtx);
-
-                        //eventsQ.UpdateItem(sw);
-                        eventsQ.UpdateAtIndex(index);
-                        eventsQ.Add(sw.Pair);
-                        eventsQ.Add(pairEvent.Pair);
+                        if (!inserted)
+                        {
+                            intersections.Add(v);
+                            inserted = true;
+                        }
+                        UpdateEventPair(sw, v);
                     }
                 }
             }
-            else
+            #endregion
+            #region Is gEdge
+            else if (intersection is gEdge)
             {
-                throw new Exception("Coincident edges not implemented just yet");
+                gEdge e = intersection as gEdge;
+
+                // On Case 3 below, last half of prev event is added as intersection,
+                // and on next loop it will be case 1 with the same edge, so this avoids duplicates
+                if(!intersections.Any() || !intersections.Last().Equals(e))
+                {
+                    intersections.Add(e);
+                    inserted = true;
+                }
+
+                // Case 1: events are coincident (same edge)
+                // (prev)--------------------(prevPair)
+                // (next)--------------------(nextPair)
+                if (next.Equals(prev))
+                {
+#if DEBUG
+                    this.coincidentCase.Add(1);
+#endif
+                    // Setting nextEvent as not contributing instead of deleting it
+                    // as doing so will make it's pair a lonely poor thing.
+                    next.Label = SweepEventLabel.NoContributing;
+                }
+                // Case 2: same start point, prev will be always shorter
+                // as on PriorityQ it must have been sorted before next
+                // (prev)----------(prevPair)
+                // (next)--------------------(nextPair)
+                else if (prev.Vertex.Equals(next.Vertex))
+                {
+#if DEBUG
+                    this.coincidentCase.Add(2);
+#endif
+                    // TODO: check this is true in all cases
+                    gVertex dividingVtx =  prev.Pair.Vertex;
+                    UpdateEventPair(next, dividingVtx);
+                }
+                // Case 3: same end point, next will be always shorter
+                // as on PriorityQ it must have been sorted after next
+                // (prev)--------------------(prevPair)
+                //        (next)-------------(nextPair)
+                else if (prev.Pair.Vertex.Equals(next.Pair.Vertex))
+                {
+#if DEBUG
+                    this.coincidentCase.Add(3);
+#endif
+                    // TODO: check this is true in all cases
+                    gVertex dividingVtx = next.Vertex;
+                    UpdateEventPair(prev, dividingVtx);
+                }
+                // Case 4: events overlap
+                // (prev)--------------------(prevPair)
+                //        (next)--------------------(nextPair)
+                else if (prev < next && prev.Pair < next.Pair)
+                {
+#if DEBUG
+                    this.coincidentCase.Add(4);
+#endif
+                    // TODO: check this is true in all cases
+                    gVertex prevDividingVtx = next.Vertex;
+                    gVertex nextDividingVtx = prev.Pair.Vertex;
+
+                    UpdateEventPair(prev, prevDividingVtx);
+                    UpdateEventPair(next, nextDividingVtx);
+                }
+                // Case 5: prev fully contains next
+                // (prev)--------------------(prevPair)
+                //        (next)---(nextPair)
+                else if (prev < next && prev.Pair > next.Pair)
+                {
+#if DEBUG
+                    this.coincidentCase.Add(5);
+#endif
+                    next.Label = SweepEventLabel.NoContributing;
+                    gVertex dividingVtx = next.Vertex;
+                    gVertex pairDividingVtx = next.Pair.Vertex;
+
+                    // Storing reference to prevPair before updating it
+                    var prevPair = prev.Pair;
+
+                    UpdateEventPair(prev, dividingVtx);
+                    UpdateEventPair(prevPair, pairDividingVtx);
+                }
+                else
+                {
+#if DEBUG
+                    this.coincidentCase.Add(-1);
+#endif
+                    throw new Exception("Case not contemplated? Damm!");
+                }
             }
+            #endregion
+
         }
 
     }
@@ -213,6 +328,11 @@ namespace Graphical.Core
         /// Determines if SweepEvent comes first on a left to right direction
         /// </summary>
         public bool IsLeft { get; set; }
+
+        /// <summary>
+        /// Label to define how a SweepEvent contributes to a polygon boolean operation.
+        /// </summary>
+        public SweepEventLabel Label;
         #endregion
 
         #region Constructor
