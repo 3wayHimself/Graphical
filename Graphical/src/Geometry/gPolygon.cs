@@ -12,7 +12,7 @@ namespace Graphical.Geometry
     /// </summary>
     public class gPolygon : gBase, ICloneable
     {
-        #region Variables
+        #region Internal Variables
 
         /// <summary>
         /// Polygon's id
@@ -33,12 +33,20 @@ namespace Graphical.Geometry
         /// Polygon's Vertices
         /// </summary>
         internal List<gVertex> vertices = new List<gVertex>();
+        #endregion
 
+        #region Public Variables
+        /// <summary>
+        /// gPolygon's vertices
+        /// </summary>
         public List<gVertex> Vertices
         {
             get { return vertices; }
         }
 
+        /// <summary>
+        /// gPolygon's edges
+        /// </summary>
         public List<gEdge> Edges
         {
             get
@@ -47,6 +55,9 @@ namespace Graphical.Geometry
             }
         }
 
+        /// <summary>
+        /// Determines if the gPolygon is closed.
+        /// </summary>
         public bool IsClosed
         {
             get
@@ -67,6 +78,12 @@ namespace Graphical.Geometry
         #endregion
 
         #region Public Constructos
+        /// <summary>
+        /// Creates a new gPolygon by a list of ordered vertices.
+        /// </summary>
+        /// <param name="vertices"></param>
+        /// <param name="isExternal"></param>
+        /// <returns></returns>
         public static gPolygon ByVertices(List<gVertex> vertices, bool isExternal = false)
         {
             gPolygon polygon = new gPolygon(-1, isExternal);
@@ -118,6 +135,11 @@ namespace Graphical.Geometry
 
         #region Public Methods
 
+        /// <summary>
+        /// Determines if a gVertex is inside the gPolygon using Fast Winding Number method
+        /// </summary>
+        /// <param name="vertex"></param>
+        /// <returns></returns>
         public bool ContainsVertex(gVertex vertex)
         {
             gVertex maxVertex = vertices.OrderByDescending(v => v.DistanceTo(vertex)).First();
@@ -153,8 +175,16 @@ namespace Graphical.Geometry
             return windNumber != 0;
         }
 
+        /// <summary>
+        /// Determines if a gEdge is inside the gPolygon by comparing
+        /// it's start, end and mid vertices.
+        /// Note: Prone to error if polygon has edges intersecting the edge not at mid vertex?
+        /// </summary>
+        /// <param name="edge"></param>
+        /// <returns></returns>
         public bool ContainsEdge(gEdge edge)
         {
+            // TODO: Check if edge intersects polygon in vertices different than start/end.
             return this.ContainsVertex(edge.StartVertex)
                 && this.ContainsVertex(edge.EndVertex)
                 && this.ContainsVertex(gVertex.MidVertex(edge.StartVertex, edge.EndVertex));
@@ -184,6 +214,10 @@ namespace Graphical.Geometry
         }
         #endregion
 
+        /// <summary>
+        /// Clone method for gPolygon
+        /// </summary>
+        /// <returns>Cloned gPolygon</returns>
         public object Clone()
         {
             gPolygon newPolygon = new gPolygon(this.id, this.isBoundary);
