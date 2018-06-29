@@ -100,8 +100,6 @@ namespace Graphical.Geometry
             // http://mathworld.wolfram.com/Line-LineIntersection.html
             if (!this.IsCoplanarTo(other)) { return null; }
             if (this.Equals(other)) { return this; } // Issues if same polygon id???
-            if (other.Contains(this.StartVertex)) { return StartVertex; }
-            if (other.Contains(this.EndVertex)) { return EndVertex; }
 
             var a = this.Direction;
             var b = other.Direction;
@@ -109,18 +107,35 @@ namespace Graphical.Geometry
             var cxb = c.Cross(b);
             var axb = a.Cross(b);
             var dot = cxb.Dot(axb);
+            var areParallels = a.IsParallelTo(b);
+
+            if (other.Contains(this.StartVertex))
+            {
+                if(areParallels) { return (this.Length < other.Length) ? this : other; }
+                else { return this.StartVertex; }
+            }
+            if (other.Contains(this.EndVertex))
+            {
+                if (areParallels) { return (this.Length < other.Length) ? this : other; }
+                else { return this.EndVertex; }
+            }
 
             // If dot == 0 it means that other edge contains at least a vertex from this edge
             // and they are parallel or perpendicular
-            if(Threshold(dot, 0))
+            if (Threshold(dot, 0))
             {
                 // If edges are parallel
                 if (a.IsParallelTo(b))
                 {
-                    //Fully contains the test edge
+                    // Fully contains the test edge
                     if (other.StartVertex.OnEdge(this) && other.EndVertex.OnEdge(this))
                     {
                         return other;
+                    }
+                    // Is fully contained by test edge
+                    else if (this.StartVertex.OnEdge(other) && this.EndVertex.OnEdge(other))
+                    {
+                        return this;
                     }
                     else if (this.StartVertex.OnEdge(other) || this.EndVertex.OnEdge(other))
                     {
