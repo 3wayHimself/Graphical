@@ -11,8 +11,21 @@ namespace Graphical.Core
 {
     public enum SweepLineType
     {
-        Linear,
-        Polygonal
+        Intersects,
+        Boolean
+    }
+
+    public enum BooleanType
+    {
+        Intersection,
+        Union,
+        Differenece
+    }
+
+    public enum PolygonType
+    {
+        Subject,
+        Clip
     }
 
     public enum SweepEventLabel
@@ -38,6 +51,8 @@ namespace Graphical.Core
         internal List<SweepEvent> activeEvents;
         internal List<gBase> intersections = null;
         internal IComparer<SweepEvent> verticalAscEventsComparer = new SortEventsVerticalAscendingComparer();
+        internal gPolygon subject;
+        internal gPolygon clip;
         #endregion
 
         #region Public Properties
@@ -69,14 +84,14 @@ namespace Graphical.Core
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
-        public SweepEvent BelowEvent(int index) { return (activeEvents.Any() && index > 0) ? activeEvents[index - 1] : null; }
+        private SweepEvent BelowEvent(int index) { return (activeEvents.Any() && index > 0) ? activeEvents[index - 1] : null; }
 
         /// <summary>
         /// Returns the event above SweepEvent on index, null if none
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
-        public SweepEvent AboveEvent(int index) { return (activeEvents.Any() && index + 1 < activeEvents.Count) ? activeEvents[index + 1] : null; }
+        private SweepEvent AboveEvent(int index) { return (activeEvents.Any() && index + 1 < activeEvents.Count) ? activeEvents[index + 1] : null; }
         #endregion
 
         #region Internal Constructors
@@ -99,6 +114,11 @@ namespace Graphical.Core
                 eventsQ.Add(swEnd);
             }
         }
+
+        internal SweepLine(gPolygon subject, gPolygon clip)
+        {
+            this.type = SweepLineType.Boolean;
+        }
         #endregion
 
         #region Public Constructors
@@ -109,7 +129,7 @@ namespace Graphical.Core
         /// <returns>SweepLine</returns>
         public static SweepLine ByEdges(List<gEdge> edges)
         {
-            return new SweepLine(edges, SweepLineType.Linear);
+            return new SweepLine(edges, SweepLineType.Intersects);
         }
 
         /// <summary>
@@ -119,12 +139,34 @@ namespace Graphical.Core
         /// <returns>SweepLine</returns>
         public static SweepLine ByPolygons(List<gPolygon> polygons)
         {
-            List<gEdge> edges = new List<gEdge>();
-            polygons.ForEach(p => edges.AddRange(p.Edges));
+            return new SweepLine(
+                polygons.SelectMany(p => p.Edges).ToList(),
+                SweepLineType.Intersects);
+        }
 
-            return new SweepLine(edges, SweepLineType.Polygonal);
-        } 
+
         #endregion
+
+        #region Public Methods
+
+        public static List<gPolygon> Union(gPolygon main, gPolygon clip)
+        {
+            List<gEdge> edges = new List<gEdge>(main.Edges);
+            edges.AddRange(clip.Edges);
+            var swLine = new SweepLine(edges, SweepLineType.Boolean)
+            {
+                subject = main,
+                clip = clip
+            };
+
+            List<SweepEvent> events = swLine.ComputeBooleanOperation();
+
+            return null;
+        }
+
+        #endregion
+
+        #region Internal Methods
 
         // TODO: Check if BoundingBoxes intersect first to avoid unnecessary computation if they don't
         // TODO: Check no coplanar edges.
@@ -146,8 +188,8 @@ namespace Graphical.Core
                     SweepEvent belowEvent = BelowEvent(index);
                     SweepEvent aboveEvent = AboveEvent(index);
 
-                    if (belowEvent != null) { ProcessIntersection(nextEvent, belowEvent, tempIntersections);}
-                    if (aboveEvent != null) { ProcessIntersection(nextEvent, aboveEvent, tempIntersections);}
+                    if (belowEvent != null) { ProcessIntersection(nextEvent, belowEvent, tempIntersections); }
+                    if (aboveEvent != null) { ProcessIntersection(nextEvent, aboveEvent, tempIntersections); }
                 }
                 else
                 {
@@ -161,6 +203,40 @@ namespace Graphical.Core
             }
 
             return tempIntersections;
+        }
+
+        internal List<SweepEvent> ComputeBooleanOperation()
+        {
+            List<SweepEvent> computedEvents = new List<SweepEvent>();
+            while (eventsQ.Any())
+            {
+                SweepEvent nextEvent = eventsQ.Take();
+                if (!activeEvents.Any())
+                {
+                    activeEvents.Add(nextEvent);
+                }
+                else if (nextEvent.IsLeft)
+                {
+                    int index = activeEvents.BisectIndex(nextEvent, verticalAscEventsComparer);
+                    activeEvents.Insert(index, nextEvent);
+                    SweepEvent belowEvent = BelowEvent(index);
+                    SweepEvent aboveEvent = AboveEvent(index);
+
+                    if (belowEvent != null) { ProcessIntersection(nextEvent, belowEvent); }
+                    if (aboveEvent != null) { ProcessIntersection(nextEvent, aboveEvent); }
+                }
+                else
+                {
+                    int pairIndex = activeEvents.BisectIndex(nextEvent.Pair, verticalAscEventsComparer) - 1;
+                    SweepEvent belowEvent = BelowEvent(pairIndex);
+                    SweepEvent aboveEvent = AboveEvent(pairIndex);
+
+                    activeEvents.RemoveAt(pairIndex);
+                    if (belowEvent != null && aboveEvent != null) { ProcessIntersection(belowEvent, aboveEvent); }
+                }
+            }
+
+            return computedEvents;
         }
 
         internal void UpdateEventPair(SweepEvent swEvent, gVertex newVertexPair)
@@ -179,8 +255,8 @@ namespace Graphical.Core
             eventsQ.Add(swEvent.Pair);
             eventsQ.Add(pairEvent.Pair);
         }
-        
-        internal void ProcessIntersection(SweepEvent next, SweepEvent prev, List<gBase> intersections)
+
+        internal void ProcessIntersection(SweepEvent next, SweepEvent prev, List<gBase> intersections = null)
         {
             gBase intersection = next.Edge.Intersection(prev.Edge);
             bool inserted = false;
@@ -193,7 +269,7 @@ namespace Graphical.Core
                 {
                     if (!sw.Edge.Contains(v))
                     {
-                        if (!inserted)
+                        if (intersections != null && !inserted)
                         {
                             intersections.Add(v);
                             inserted = true;
@@ -210,7 +286,7 @@ namespace Graphical.Core
 
                 // On Case 3 below, last half of prev event is added as intersection,
                 // and on next loop it will be case 1 with the same edge, so this avoids duplicates
-                if(!intersections.Any() || !intersections.Last().Equals(e))
+                if (intersections != null && (!intersections.Any() || !intersections.Last().Equals(e)) )
                 {
                     intersections.Add(e);
                     inserted = true;
@@ -238,7 +314,7 @@ namespace Graphical.Core
                     this.coincidentCase.Add(2);
 #endif
                     // TODO: check this is true in all cases
-                    gVertex dividingVtx =  prev.Pair.Vertex;
+                    gVertex dividingVtx = prev.Pair.Vertex;
                     UpdateEventPair(next, dividingVtx);
                 }
                 // Case 3: same end point, next will be always shorter
@@ -295,6 +371,7 @@ namespace Graphical.Core
                     throw new Exception("Case not contemplated? Damm!");
                 }
             }
+            #endregion 
             #endregion
 
         }
@@ -308,6 +385,8 @@ namespace Graphical.Core
     /// </summary>
     public class SweepEvent : IEquatable<SweepEvent>, IComparable<SweepEvent>
     {
+        internal PolygonType polygonType;
+
         #region Public Properties
         /// <summary>
         /// Vertex associated with the event
