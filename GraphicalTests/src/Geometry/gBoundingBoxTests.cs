@@ -56,7 +56,17 @@ namespace GraphicalTests.src.Geometry
                );
             var vertex1 = gVertex.ByCoordinates(5, 0, 2.5);
 
-            Assert.IsTrue(edge1.BoundingBox.Intersects(vertex1.BoundingBox));
+            var edge2 = gEdge.ByStartVertexEndVertex(
+               gVertex.ByCoordinates(7, 1, 0),
+               gVertex.ByCoordinates(3, 5, 0)
+               );
+            var edge3 = gEdge.ByStartVertexEndVertex(
+              gVertex.ByCoordinates(9, 8, 0),
+              gVertex.ByCoordinates(1, 3, 0)
+              );
+
+            //Assert.IsTrue(edge1.BoundingBox.Intersects(vertex1.BoundingBox));
+            Assert.IsTrue(edge2.BoundingBox.Intersects(edge3.BoundingBox));
         }
 
     }

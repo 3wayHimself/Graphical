@@ -250,13 +250,7 @@ namespace Graphical.Geometry
 
         internal override gBoundingBox ComputeBoundingBox()
         {
-            if(StartVertex.X < EndVertex.X || StartVertex.Y < EndVertex.Y || StartVertex.Z < EndVertex.Z)
-            {
-                return gBoundingBox.ByMinVertexMaxVertex(StartVertex, EndVertex);
-            }else
-            {
-                return gBoundingBox.ByMinVertexMaxVertex(EndVertex, StartVertex);
-            }
+            return gBoundingBox.ByMinVertexMaxVertex(StartVertex, EndVertex);
         }
 
         #endregion

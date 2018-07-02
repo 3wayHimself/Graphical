@@ -239,10 +239,7 @@ namespace Graphical.Geometry
                 yCoord.Add(v.Y);
                 zCoord.Add(v.Z);
             }
-            return new gBoundingBox(
-                new double[3] { xCoord.Min(), yCoord.Min(), zCoord.Min() },
-                new double[3] { xCoord.Max(), yCoord.Max(), zCoord.Max() }
-                );
+            return new gBoundingBox(xCoord, yCoord, zCoord);
         }
     }
 }

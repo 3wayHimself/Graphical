@@ -36,11 +36,10 @@ namespace Graphical.Geometry
         #endregion
 
         #region Private Constructor
-        internal gBoundingBox(double[] min, double[] max)
+        internal gBoundingBox(IEnumerable<double> xCoordinates, IEnumerable<double> yCoordinates, IEnumerable<double> zCoordinates)
         {
-            if(min.Count() != 3 || max.Count() != 3) { throw new ArgumentException("Arrays must contain 3 coordinates each"); }
-            this.min = min;
-            this.max = max;
+            this.min = new double[3] { xCoordinates.Min(), yCoordinates.Min(), zCoordinates.Min() };
+            this.max = new double[3] { xCoordinates.Max(), yCoordinates.Max(), zCoordinates.Max() };
         }
         #endregion
 
@@ -53,7 +52,7 @@ namespace Graphical.Geometry
         /// <returns></returns>
         public static gBoundingBox ByMinVertexMaxVertex(gVertex min, gVertex max)
         {
-            return new gBoundingBox(new double[3] { min.X, min.Y, min.Z }, new double[3] { max.X, max.Y, max.Z });
+            return new gBoundingBox(new double[2] { min.X, max.X}, new double[2] { min.Y, max.Y }, new double[2] { min.Z, max.Z });
         }
         #endregion
 
