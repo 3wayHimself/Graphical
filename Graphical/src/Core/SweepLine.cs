@@ -7,6 +7,7 @@ using Graphical.Geometry;
 using Graphical.DataStructures;
 using Graphical.Extensions;
 
+
 namespace Graphical.Core
 {
     public enum SweepLineType
@@ -24,12 +25,14 @@ namespace Graphical.Core
 
     public enum PolygonType
     {
+        None = 0,
         Subject,
         Clip
     }
 
     public enum SweepEventLabel
     {
+        Normal,
         NoContributing,
         SameTransition,
         DifferentTransition
@@ -46,7 +49,7 @@ namespace Graphical.Core
 #endif
 
         #region Internal Properties
-        internal SweepLineType type;
+        internal SweepLineType sweepLineType;
         internal MinPriorityQ<SweepEvent> eventsQ;
         internal List<SweepEvent> activeEvents;
         internal List<gBase> intersections = null;
@@ -97,27 +100,22 @@ namespace Graphical.Core
         #region Internal Constructors
         internal SweepLine (List<gEdge> edges, SweepLineType type)
         {
-            this.type = type;
+            this.sweepLineType = type;
             this.eventsQ = new MinPriorityQ<SweepEvent>(edges.Count * 2);
             this.activeEvents = new List<SweepEvent>(edges.Count);
 
-            foreach(gEdge e in edges)
-            {
-                SweepEvent swStart = new SweepEvent(e.StartVertex, e);
-                SweepEvent swEnd = new SweepEvent(e.EndVertex, e);
-                swStart.Pair = swEnd;
-                swEnd.Pair = swStart;
-                swStart.IsLeft = swStart < swEnd;
-                swEnd.IsLeft = !swStart.IsLeft;
-
-                eventsQ.Add(swStart);
-                eventsQ.Add(swEnd);
-            }
+            edges.ForEach(e => this.AddNewEvent(e));
         }
 
-        internal SweepLine(gPolygon subject, gPolygon clip)
+        internal SweepLine(gPolygon subject, gPolygon clip, SweepLineType type)
         {
-            this.type = SweepLineType.Boolean;
+            this.sweepLineType = type;
+            var totalEdges = subject.Edges.Count + clip.Edges.Count;
+            this.eventsQ = new MinPriorityQ<SweepEvent>(totalEdges * 2);
+            this.activeEvents = new List<SweepEvent>(totalEdges);
+
+            subject.Edges.ForEach(e => this.AddNewEvent(e, PolygonType.Subject));
+            clip.Edges.ForEach(e => this.AddNewEvent(e, PolygonType.Clip));
         }
         #endregion
 
@@ -153,20 +151,39 @@ namespace Graphical.Core
         {
             List<gEdge> edges = new List<gEdge>(main.Edges);
             edges.AddRange(clip.Edges);
-            var swLine = new SweepLine(edges, SweepLineType.Boolean)
-            {
-                subject = main,
-                clip = clip
-            };
+            var swLine = new SweepLine(main, clip, SweepLineType.Boolean);
 
-            List<SweepEvent> events = swLine.ComputeBooleanOperation();
-
-            return null;
+            return swLine.ComputeBooleanOperation(BooleanType.Union);
         }
 
         #endregion
 
         #region Internal Methods
+
+        private void AddNewEvent(gEdge edge, PolygonType polType = PolygonType.None)
+        {
+            SweepEvent swStart = new SweepEvent(edge.StartVertex, edge)
+            {
+                Label = SweepEventLabel.Normal
+            };
+            SweepEvent swEnd = new SweepEvent(edge.EndVertex, edge)
+            {
+                Label = SweepEventLabel.Normal
+            };
+            swStart.Pair = swEnd;
+            swEnd.Pair = swStart;
+            swStart.IsLeft = swStart < swEnd;
+            swEnd.IsLeft = !swStart.IsLeft;
+
+            if(polType != PolygonType.None)
+            {
+                swStart.polygonType = polType;
+                swEnd.polygonType = polType;
+            }
+
+            eventsQ.Add(swStart);
+            eventsQ.Add(swEnd);
+        }
 
         // TODO: Check if BoundingBoxes intersect first to avoid unnecessary computation if they don't
         // TODO: Check no coplanar edges.
@@ -205,38 +222,67 @@ namespace Graphical.Core
             return tempIntersections;
         }
 
-        internal List<SweepEvent> ComputeBooleanOperation()
+        internal List<gPolygon> ComputeBooleanOperation(BooleanType boolType)
         {
             List<SweepEvent> computedEvents = new List<SweepEvent>();
-            while (eventsQ.Any())
+            List<gPolygon> computedPolygons = new List<gPolygon>();
+
+            // If one of the polygons is empty
+            if(subject.Edges.Count * clip.Edges.Count == 0)
             {
-                SweepEvent nextEvent = eventsQ.Take();
-                if (!activeEvents.Any())
+                if(boolType == BooleanType.Differenece)
                 {
-                    activeEvents.Add(nextEvent);
+                    computedPolygons.Add(subject);
                 }
-                else if (nextEvent.IsLeft)
+                else if (boolType == BooleanType.Intersection)
                 {
-                    int index = activeEvents.BisectIndex(nextEvent, verticalAscEventsComparer);
-                    activeEvents.Insert(index, nextEvent);
-                    SweepEvent belowEvent = BelowEvent(index);
-                    SweepEvent aboveEvent = AboveEvent(index);
-
-                    if (belowEvent != null) { ProcessIntersection(nextEvent, belowEvent); }
-                    if (aboveEvent != null) { ProcessIntersection(nextEvent, aboveEvent); }
-                }
-                else
-                {
-                    int pairIndex = activeEvents.BisectIndex(nextEvent.Pair, verticalAscEventsComparer) - 1;
-                    SweepEvent belowEvent = BelowEvent(pairIndex);
-                    SweepEvent aboveEvent = AboveEvent(pairIndex);
-
-                    activeEvents.RemoveAt(pairIndex);
-                    if (belowEvent != null && aboveEvent != null) { ProcessIntersection(belowEvent, aboveEvent); }
+                    computedPolygons.Add((subject.Edges.Count == 0) ? clip : subject);
                 }
             }
+            // If they don't intersect
+            else if (!subject.BoundingBox.Intersects(clip.BoundingBox))
+            {
+                computedPolygons.Add(subject);
+                if(boolType == BooleanType.Union)
+                {
+                    computedPolygons.Add(clip);
+                }
+            }
+            else
+            {
+                while (eventsQ.Any())
+                {
+                    SweepEvent nextEvent = eventsQ.Take();
+                    if(nextEvent.IsInside == null) { nextEvent.IsInside = false; }
+                    if (!activeEvents.Any())
+                    {
+                        nextEvent.IsInside = false; //Nothing to be inside of.
+                        activeEvents.Add(nextEvent);
+                    }
+                    else if (nextEvent.IsLeft)
+                    {
+                        int index = activeEvents.BisectIndex(nextEvent, verticalAscEventsComparer);
+                        activeEvents.Insert(index, nextEvent);
+                        SweepEvent belowEvent = BelowEvent(index);
+                        SweepEvent aboveEvent = AboveEvent(index);
 
-            return computedEvents;
+                        if (belowEvent != null) { ProcessIntersection(nextEvent, belowEvent); }
+                        if (aboveEvent != null) { ProcessIntersection(nextEvent, aboveEvent); }
+                    }
+                    else
+                    {
+                        int pairIndex = activeEvents.BisectIndex(nextEvent.Pair, verticalAscEventsComparer) - 1;
+                        SweepEvent belowEvent = BelowEvent(pairIndex);
+                        SweepEvent aboveEvent = AboveEvent(pairIndex);
+
+                        activeEvents.RemoveAt(pairIndex);
+                        if (belowEvent != null && aboveEvent != null) { ProcessIntersection(belowEvent, aboveEvent); }
+                    }
+                }
+            }
+            
+
+            return computedPolygons;
         }
 
         internal void UpdateEventPair(SweepEvent swEvent, gVertex newVertexPair)
@@ -260,7 +306,7 @@ namespace Graphical.Core
         {
             gBase intersection = next.Edge.Intersection(prev.Edge);
             bool inserted = false;
-            #region is gVertex
+            #region Is gVertex
             if (intersection is gVertex)
             {
                 gVertex v = intersection as gVertex;
@@ -409,9 +455,15 @@ namespace Graphical.Core
         public bool IsLeft { get; set; }
 
         /// <summary>
+        /// Flags if associated edge is inside other polygon on boolean operations
+        /// </summary>
+        public bool? IsInside { get; set; }
+
+        /// <summary>
         /// Label to define how a SweepEvent contributes to a polygon boolean operation.
         /// </summary>
         public SweepEventLabel Label;
+
         #endregion
 
         #region Constructor
@@ -463,10 +515,10 @@ namespace Graphical.Core
                 }
             }
             // If same X
-            else if(gBase.Threshold(this.Vertex.X, other.Vertex.X))
+            else if(this.Vertex.X.AlmostEqualTo(other.Vertex.X))
             {
                 // If same Y
-                if(gBase.Threshold(this.Vertex.Y, other.Vertex.Y))
+                if(this.Vertex.Y.AlmostEqualTo(other.Vertex.Y))
                 {
                     return this.Vertex.Z.CompareTo(other.Vertex.Z);
                 }
@@ -570,10 +622,10 @@ namespace Graphical.Core
                 }
             }
             // If same Y, below is the one with lower X
-            else if (gBase.Threshold(x.Vertex.Y, y.Vertex.Y))
+            else if (x.Vertex.Y.AlmostEqualTo(y.Vertex.Y))
             {
                 // If same X, below is the one with lower Z
-                if (gBase.Threshold(x.Vertex.X, y.Vertex.X))
+                if (x.Vertex.X.AlmostEqualTo(y.Vertex.X))
                 {
                     return x.Vertex.Z.CompareTo(y.Vertex.Z);
                 }
