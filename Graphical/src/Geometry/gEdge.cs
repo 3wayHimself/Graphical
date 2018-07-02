@@ -99,6 +99,7 @@ namespace Graphical.Geometry
         public gBase Intersection(gEdge other)
         {
             // http://mathworld.wolfram.com/Line-LineIntersection.html
+            if (!this.BoundingBox.Intersects(other.BoundingBox)) { return null; }
             if (!this.IsCoplanarTo(other)) { return null; }
             if (this.Equals(other)) { return this; } // Issues if same polygon id???
 
