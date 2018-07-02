@@ -482,7 +482,7 @@ namespace Graphical.Graphs
                 if (newVisGraph.Contains(v)) { continue; }
                 gEdge closestEdge = newVisGraph.baseGraph.edges.OrderBy(e => e.DistanceTo(v)).First();
 
-                if (!gBase.Threshold(closestEdge.DistanceTo(v),0))
+                if (!closestEdge.DistanceTo(v).AlmostEqualTo(0))
                 {
                     singleVertices.Add(v);
                 }

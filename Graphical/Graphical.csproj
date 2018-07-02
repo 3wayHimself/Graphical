@@ -94,6 +94,7 @@
     <Compile Include="src\Algorithms\Algorithms.cs" />
     <Compile Include="src\Core\SweepLine.cs" />
     <Compile Include="src\Extensions\NumericExtensions.cs" />
+    <Compile Include="src\Geometry\gBoundingBox.cs" />
     <Compile Include="src\Geometry\gPolygon.cs" />
     <Compile Include="src\Geometry\gVector.cs" />
     <Compile Include="src\DataStructures\BinaryHeap.cs" />

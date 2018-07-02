@@ -11,6 +11,11 @@ namespace Graphical.Extensions
     /// </summary>
     public static class NumericExtensions
     {
+
+        #region Constants
+        const double EPS = 1e-5;
+        #endregion
+
         /// <summary>
         /// Double extension method.
         /// Maps a double value from a given range to a new one.
@@ -27,6 +32,50 @@ namespace Graphical.Extensions
             return (normal * (newMax - newMin)) + newMin;
         }
 
+        /// <summary>
+        /// Determines if the difference between two values is less or equal to
+        /// a constant decimal value of 1e-5
+        /// </summary>
+        /// <param name="value1"></param>
+        /// <param name="value2"></param>
+        /// <returns></returns>
+        public static bool AlmostEqualTo(this double value1, double value2)
+        {
+
+            return Math.Abs(value1 - value2) <= EPS;
+
+        }
+
+        /// <summary>
+        /// Rounds a value to a given number of decimals.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="decimals">Default 6 decimals</param>
+        /// <returns></returns>
+        public static double Round(this double value, int decimals = 6)
+        {
+            return Math.Round(value, decimals);
+        }
+
+        /// <summary>
+        /// Converts a radian angle to degrees
+        /// </summary>
+        /// <param name="radians"></param>
+        /// <returns></returns>
+        public static double ToDegrees(this double radians)
+        {
+            return radians * (180 / Math.PI);
+        }
+
+        /// <summary>
+        /// Converts a degree angle to radians
+        /// </summary>
+        /// <param name="degrees"></param>
+        /// <returns></returns>
+        public static double ToRadians(this double degrees)
+        {
+            return degrees * (Math.PI / 180);
+        }
 
     }
 }

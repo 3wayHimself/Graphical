@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Graphical.Extensions;
 #endregion
 
 
@@ -142,7 +143,7 @@ namespace Graphical.Geometry
 
             // If dot == 0 it means that other edge contains at least a vertex from this edge
             // and they are parallel or perpendicular. Cannot be parallel as 
-            if (Threshold(dot, 0))
+            if (dot.AlmostEqualTo(0))
             {
                 return (this.StartVertex.OnEdge(other)) ? this.StartVertex : this.EndVertex;
             }
@@ -244,6 +245,17 @@ namespace Graphical.Geometry
         public override string ToString()
         {
             return String.Format("gEdge(StartVertex: {0}, EndVertex: {1})", StartVertex, EndVertex);
+        }
+
+        internal override gBoundingBox ComputeBoundingBox()
+        {
+            if(StartVertex.X < EndVertex.X || StartVertex.Y < EndVertex.Y || StartVertex.Z < EndVertex.Z)
+            {
+                return gBoundingBox.ByMinVertexMaxVertex(StartVertex, EndVertex);
+            }else
+            {
+                return gBoundingBox.ByMinVertexMaxVertex(EndVertex, StartVertex);
+            }
         }
 
         #endregion

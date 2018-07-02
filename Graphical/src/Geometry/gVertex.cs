@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Graphical.Extensions;
 #endregion
 
 namespace Graphical.Geometry
@@ -28,15 +29,21 @@ namespace Graphical.Geometry
 
         #endregion
 
-        #region Constructors
+        #region Internal/Private Constructors
         private gVertex(double x, double y, double z = 0, int pId = -1)
         {
             polygonId = pId;
-            X = Round(x);
-            Y = Round(y);
-            Z = Round(z);
+            X = x.Round();
+            Y = y.Round();
+            Z = z.Round();
         }
 
+        internal static gVertex ByCoordinatesArray(double[] array)
+        {
+            return new gVertex(array[0], array[1], array[3]);
+        }
+        #endregion
+        #region Public Constructors
         /// <summary>
         /// gVertex constructor method by a given set of XYZ coordinates
         /// </summary>
@@ -89,7 +96,7 @@ namespace Graphical.Geometry
                     throw new Exception("Plane not defined");
             }
             //Rounding due to floating point error.
-            if (Threshold(value,0)) { return 0; } //Points are colinear
+            if (value.AlmostEqualTo(0)) { return 0; } //Points are colinear
 
             return (value > 0) ? 1 : -1; //Counter clock or clock wise
         }
@@ -99,8 +106,8 @@ namespace Graphical.Geometry
             //Rad angles http://math.rice.edu/~pcmi/sphere/drg_txt.html
             double dx = vertex.X - centre.X;
             double dy = vertex.Y - centre.Y;
-            bool onYAxis = Threshold(dx, 0);
-            bool onXAxis = Threshold(dy, 0);
+            bool onYAxis = dx.AlmostEqualTo(0);
+            bool onXAxis = dy.AlmostEqualTo(0);
             //TODO: Implement Z angle? that would becom UV coordinates.
             //double dz = vertex.point.Z - centre.point.Z;
 
@@ -205,7 +212,7 @@ namespace Graphical.Geometry
             gVector ac = gVector.ByTwoVertices(vertices[0], vertices[2]);
             gVector cross = ab.Cross(ac);
 
-            return vertices.Skip(3).All(vtx => Threshold(gVector.ByTwoVertices(vertices[0], vtx).Dot(cross), 0));
+            return vertices.Skip(3).All(vtx => gVector.ByTwoVertices(vertices[0], vtx).Dot(cross).AlmostEqualTo(0));
         }
 
         internal static bool OnEdgeProjection(gVertex start, gVertex point, gVertex end, string plane = "xy")
@@ -240,7 +247,7 @@ namespace Graphical.Geometry
         public bool Equals(gVertex obj)
         {
             if (obj == null) { return false; }
-            bool eq = Threshold(this.X, obj.X) && Threshold(this.Y, obj.Y) && Threshold(this.Z, obj.Z);
+            bool eq = this.X.AlmostEqualTo(obj.X) && this.Y.AlmostEqualTo(obj.Y) && this.Z.AlmostEqualTo(obj.Z);
             return eq;
         }
 
@@ -287,7 +294,12 @@ namespace Graphical.Geometry
             return newVertex;
         }
 
-        
+        internal override gBoundingBox ComputeBoundingBox()
+        {
+            return gBoundingBox.ByMinVertexMaxVertex(this, this);
+        }
+
+
         #endregion
 
     }

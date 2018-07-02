@@ -131,6 +131,8 @@ namespace Graphical.Geometry
 
             return newPolygon;
         }
+
+        
         #endregion
 
         #region Public Methods
@@ -224,6 +226,23 @@ namespace Graphical.Geometry
             newPolygon.edges = new List<gEdge>(this.edges);
             newPolygon.vertices = new List<gVertex>(this.vertices);
             return newPolygon;
+        }
+
+        internal override gBoundingBox ComputeBoundingBox()
+        {
+            var xCoord = new List<double>(this.vertices.Count);
+            var yCoord = new List<double>(this.vertices.Count);
+            var zCoord = new List<double>(this.vertices.Count);
+            foreach(gVertex v in vertices)
+            {
+                xCoord.Add(v.X);
+                yCoord.Add(v.Y);
+                zCoord.Add(v.Z);
+            }
+            return new gBoundingBox(
+                new double[3] { xCoord.Min(), yCoord.Min(), zCoord.Min() },
+                new double[3] { xCoord.Max(), yCoord.Max(), zCoord.Max() }
+                );
         }
     }
 }
