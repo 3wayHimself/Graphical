@@ -66,10 +66,11 @@ namespace Graphical
             while (dest != origin)
             {
                 gVertex parent = ParentVertices[dest];
-                path.AddEdge(new gEdge(dest, parent));
+                path.AddEdge(new gEdge(parent, dest));
                 dest = parent;
             }
-
+            // Reversing edges list so they will be sorted from origin to target
+            path.edges.Reverse();
             return path;
             
         }
