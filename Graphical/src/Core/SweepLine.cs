@@ -184,8 +184,7 @@ namespace Graphical.Core
             eventsQ.Add(swStart);
             eventsQ.Add(swEnd);
         }
-
-        // TODO: Check if BoundingBoxes intersect first to avoid unnecessary computation if they don't
+        
         // TODO: Check no coplanar edges.
         internal List<gBase> FindIntersections()
         {
@@ -265,6 +264,7 @@ namespace Graphical.Core
                         activeEvents.Insert(index, nextEvent);
                         SweepEvent belowEvent = BelowEvent(index);
                         SweepEvent aboveEvent = AboveEvent(index);
+                        SweepEvent prev = (belowEvent == null) ? aboveEvent : belowEvent;
 
                         if (belowEvent != null) { ProcessIntersection(nextEvent, belowEvent); }
                         if (aboveEvent != null) { ProcessIntersection(nextEvent, aboveEvent); }
@@ -420,6 +420,30 @@ namespace Graphical.Core
             #endregion 
             #endregion
 
+        }
+
+        /// <summary>
+        /// This methods is call after intersection is calculated
+        /// </summary>
+        /// <param name="next"></param>
+        /// <param name="prev"></param>
+        internal void ProcessInsideFlags(SweepEvent next, SweepEvent prev)
+        {
+            // They intersected as coincident edges
+            if (next.Equals(prev))
+            {
+
+            }
+            // They intersected on a vertex, which should be the pair's event vertex.
+            else if (next.Pair.Vertex.Equals(prev.Pair.Vertex))
+            {
+
+            }
+            // Events didn't intersected
+            else
+            {
+
+            }
         }
 
     }
