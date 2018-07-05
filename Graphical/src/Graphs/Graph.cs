@@ -31,7 +31,7 @@ namespace Graphical.Graphs
         /// <summary>
         /// Polygon's Id counter.
         /// </summary>
-        internal int pId { get; private set; }
+        internal int? pId { get; private set; }
 
         /// <summary>
         /// Dictionary with vertex as key and values edges associated with the vertex.
@@ -140,7 +140,7 @@ namespace Graphical.Graphs
             {
                 pId++;
             }
-            return pId;
+            return pId.Value;
         }
 
         internal void ResetEdgesFromPolygons()
@@ -256,8 +256,15 @@ namespace Graphical.Graphs
 
                         //It is extreme vertex, polygon not closed
                         if(graph[nextVertex].Count < 2) { break; }
-
-                        nextEdge = graph[nextVertex].Where(e => !e.Equals(nextEdge)).First();
+                        else if( graph[nextVertex].Count == 2)
+                        {
+                            nextEdge = graph[nextVertex].Where(e => !e.Equals(nextEdge)).First();
+                        }
+                        else
+                        {
+                            throw new Exception("Probably Intersecting polygon, split regions");
+                        }
+                        
                         nextVertex = nextEdge.GetVertexPair(nextVertex);
                     }
                     if (!polygon.edges.Last().Equals(nextEdge))
