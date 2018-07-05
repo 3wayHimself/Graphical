@@ -143,10 +143,13 @@ namespace Graphical.Geometry
             var dot = cxb.Dot(axb);
 
             // If dot == 0 it means that other edge contains at least a vertex from this edge
-            // and they are parallel or perpendicular. Cannot be parallel as 
+            // and they are parallel or perpendicular. Cannot be parallel as that was tested before.
+            // It might also mean they don't intersect but the would if extending the projections.
             if (dot.AlmostEqualTo(0))
             {
-                return (this.StartVertex.OnEdge(other)) ? this.StartVertex : this.EndVertex;
+                if (this.StartVertex.OnEdge(other)) { return this.StartVertex; }
+                else if(this.EndVertex.OnEdge(other)) { return this.EndVertex; }
+                else { return null; }
             }
 
             double s = (dot) / Math.Pow(axb.Length, 2);
