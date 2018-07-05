@@ -110,6 +110,8 @@ namespace Graphical.Core
         internal SweepLine(gPolygon subject, gPolygon clip, SweepLineType type)
         {
             this.sweepLineType = type;
+            this.subject = subject;
+            this.clip = clip;
             var totalEdges = subject.Edges.Count + clip.Edges.Count;
             this.eventsQ = new MinPriorityQ<SweepEvent>(totalEdges * 2);
             this.activeEvents = new List<SweepEvent>(totalEdges);
@@ -189,9 +191,20 @@ namespace Graphical.Core
         internal List<gBase> FindIntersections()
         {
             List<gBase> tempIntersections = new List<gBase>();
+#if DEBUG
+            int counter = 0;
+#endif
 
             while (eventsQ.Any())
             {
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine("Loop #" + ++counter + " - Current Q:\n");
+                eventsQ.heapIndices
+                    .OrderBy(h => h.Value).ToList()
+                    .Select((h, i) => new { Index = i+1, Event = h.Key}).ToList()
+                    .ForEach(h => System.Diagnostics.Debug.WriteLine(h.Index + " - "+h.Event.ToString()));
+                System.Diagnostics.Debug.WriteLine("\n######\n");
+#endif
                 SweepEvent nextEvent = eventsQ.Take();
                 if (!activeEvents.Any())
                 {
@@ -223,11 +236,13 @@ namespace Graphical.Core
 
         internal List<gPolygon> ComputeBooleanOperation(BooleanType boolType)
         {
-            List<SweepEvent> computedEvents = new List<SweepEvent>();
+            EventChainer chain = new EventChainer(boolType);
             List<gPolygon> computedPolygons = new List<gPolygon>();
-
+#if DEBUG
+            int counter = 0;
+#endif
             // If one of the polygons is empty
-            if(subject.Edges.Count * clip.Edges.Count == 0)
+            if (subject.Edges.Count * clip.Edges.Count == 0)
             {
                 if(boolType == BooleanType.Differenece)
                 {
@@ -251,12 +266,19 @@ namespace Graphical.Core
             {
                 while (eventsQ.Any())
                 {
+#if DEBUG
+                    System.Diagnostics.Debug.WriteLine("Loop #" + ++counter + " - Current Q:\n");
+                    eventsQ.heapIndices
+                        .OrderBy(h => h.Value).ToList()
+                        .Select((h, i) => new { Index = i + 1, Event = h.Key }).ToList()
+                        .ForEach(h => System.Diagnostics.Debug.WriteLine(h.Index + " - " + h.Event.ToString()));
+                    System.Diagnostics.Debug.WriteLine("\n######\n");
+#endif
                     SweepEvent nextEvent = eventsQ.Take();
-                    if(nextEvent.IsInside == null) { nextEvent.IsInside = false; }
                     if (!activeEvents.Any())
                     {
-                        nextEvent.IsInside = false; //Nothing to be inside of.
                         activeEvents.Add(nextEvent);
+                        ProcessInsideFlags(nextEvent, null);
                     }
                     else if (nextEvent.IsLeft)
                     {
@@ -264,7 +286,7 @@ namespace Graphical.Core
                         activeEvents.Insert(index, nextEvent);
                         SweepEvent belowEvent = BelowEvent(index);
                         SweepEvent aboveEvent = AboveEvent(index);
-                        SweepEvent prev = (belowEvent == null) ? aboveEvent : belowEvent;
+                        ProcessInsideFlags(nextEvent, belowEvent);
 
                         if (belowEvent != null) { ProcessIntersection(nextEvent, belowEvent); }
                         if (aboveEvent != null) { ProcessIntersection(nextEvent, aboveEvent); }
@@ -275,10 +297,15 @@ namespace Graphical.Core
                         SweepEvent belowEvent = BelowEvent(pairIndex);
                         SweepEvent aboveEvent = AboveEvent(pairIndex);
 
+                        chain.Add(activeEvents[pairIndex]);
                         activeEvents.RemoveAt(pairIndex);
                         if (belowEvent != null && aboveEvent != null) { ProcessIntersection(belowEvent, aboveEvent); }
                     }
+
+                    System.Diagnostics.Debug.WriteLine(String.Format("- {0} : \n\tIsInside: {1} \n\tInOut: {2}", nextEvent.ToString(), nextEvent.IsInside, nextEvent.InOut));
                 }
+
+                computedPolygons = chain.GetPolygons();
             }
             
 
@@ -349,6 +376,7 @@ namespace Graphical.Core
                     // Setting nextEvent as not contributing instead of deleting it
                     // as doing so will make it's pair a lonely poor thing.
                     next.Label = SweepEventLabel.NoContributing;
+                    prev.Label = next.InOut == prev.InOut ? SweepEventLabel.SameTransition : SweepEventLabel.DifferentTransition;
                 }
                 // Case 2: same start point, prev will be always shorter
                 // as on PriorityQ it must have been sorted before next
@@ -429,21 +457,30 @@ namespace Graphical.Core
         /// <param name="prev"></param>
         internal void ProcessInsideFlags(SweepEvent next, SweepEvent prev)
         {
-            // They intersected as coincident edges
-            if (next.Equals(prev))
+            // If prev is null, 
+            if(prev == null)
             {
-
+                next.IsInside = false;
+                next.InOut = false;
             }
-            // They intersected on a vertex, which should be the pair's event vertex.
-            else if (next.Pair.Vertex.Equals(prev.Pair.Vertex))
+            //// They intersect as coincident edges
+            //else if (next.Equals(prev))
+            //{
+
+            //}
+            // They intersect on the event's vertices
+            else if (next.polygonType == prev.polygonType)
             {
-
+                next.IsInside = prev.IsInside;
+                next.InOut = !prev.InOut;
             }
-            // Events didn't intersected
+            // To Check
             else
             {
-
+                next.IsInside = !prev.InOut;
+                next.InOut = prev.IsInside;
             }
+            
         }
 
     }
@@ -483,6 +520,13 @@ namespace Graphical.Core
         /// </summary>
         public bool? IsInside { get; set; }
 
+
+        /// <summary>
+        /// Flags if the associated edge represents an in-out transition into the polygon
+        /// in an upwards, y-axis direction.
+        /// </summary>
+        public bool? InOut { get; set; }
+
         /// <summary>
         /// Label to define how a SweepEvent contributes to a polygon boolean operation.
         /// </summary>
@@ -513,7 +557,8 @@ namespace Graphical.Core
             this.Pair = new SweepEvent(newPairVertex, this.Edge)
             {
                 Pair = this,
-                IsLeft = !this.IsLeft
+                IsLeft = !this.IsLeft,
+                polygonType = this.polygonType
             };
         }
 
@@ -619,12 +664,12 @@ namespace Graphical.Core
             return String.Format("(Vertex:{0}, Pair:{1})", this.Vertex.ToString(), this.Pair.Vertex.ToString());
         }
     }
-    
+
     /// <summary>
     /// Custom Vertical Ascending IComparer for SweepEvent.
     /// Lower SweepEvent has lowest X. At same X, lowest Y and finally lowest Z.
     /// </summary>
-    public class SortEventsVerticalAscendingComparer : IComparer<SweepEvent>
+    internal class SortEventsVerticalAscendingComparer : IComparer<SweepEvent>
     {
         /// <summary>
         /// Custom SweepEvent Vertical Ascending Comparer
@@ -661,6 +706,56 @@ namespace Graphical.Core
             else
             {
                 return x.Vertex.Y.CompareTo(y.Vertex.Y);
+            }
+        }
+    }
+
+    internal class EventChainer
+    {
+        internal BooleanType booleanType;
+        internal Graphical.Graphs.Graph graph = new Graphs.Graph();
+
+        public EventChainer(BooleanType booleanType)
+        {
+            this.booleanType = booleanType;
+        }
+
+        public void Add(SweepEvent swEvent)
+        {
+            if (IsValidEvent(swEvent))
+            {
+                graph.AddEdge(swEvent.Edge);
+            }
+        }
+
+        public List<gPolygon> GetPolygons()
+        {
+            graph.BuildPolygons();
+            return graph.Polygons;
+        }
+
+        internal bool IsValidEvent(SweepEvent swEvent)
+        {
+            bool subjectOut = swEvent.polygonType == PolygonType.Subject && !swEvent.IsInside.Value;
+            bool clipIn = swEvent.polygonType == PolygonType.Clip && swEvent.IsInside.Value;
+
+            switch (booleanType)
+            {
+                case BooleanType.Union:
+                    return !swEvent.IsInside.Value &&
+                    swEvent.Label != SweepEventLabel.NoContributing &&
+                    swEvent.Label != SweepEventLabel.DifferentTransition;
+
+                case BooleanType.Differenece:
+                    return (subjectOut || clipIn) &&
+                    swEvent.Label != SweepEventLabel.NoContributing &&
+                    swEvent.Label != SweepEventLabel.SameTransition;
+
+                case BooleanType.Intersection:
+                    return (!subjectOut || clipIn) &&
+                    swEvent.Label != SweepEventLabel.NoContributing;
+                default:
+                    throw new Exception("WARNING! BooleanType is not set up");
             }
         }
     }

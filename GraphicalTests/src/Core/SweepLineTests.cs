@@ -139,5 +139,29 @@ namespace Graphical.Core.Tests
 
 
         }
+
+        [Test]
+        public void ComplexPolygonBoolean()
+        {
+            var clip = gPolygon.ByVertices(new List<gVertex>()
+            {
+                gVertex.ByCoordinates(5, 25),
+                gVertex.ByCoordinates(5, 30),
+                gVertex.ByCoordinates(15, 15),
+                gVertex.ByCoordinates(30, 15),
+                gVertex.ByCoordinates(20, 10),
+                gVertex.ByCoordinates(17, 27)
+            });
+            var subject = gPolygon.ByVertices(new List<gVertex>()
+            {
+                gVertex.ByCoordinates(5, 12),
+                gVertex.ByCoordinates(35, 30),
+                gVertex.ByCoordinates(32, 5),
+                gVertex.ByCoordinates(15, 0)
+            });
+
+            List<gPolygon> swLine = SweepLine.Union(subject, clip);
+            Assert.IsTrue(swLine.Any());
+        }
     }
 }
