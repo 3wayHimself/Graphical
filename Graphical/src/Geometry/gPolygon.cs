@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Graphical.Core;
 
 namespace Graphical.Geometry
 {
@@ -213,6 +214,43 @@ namespace Graphical.Geometry
             joinedVertices.AddRange(otherPolygon.Vertices);
 
             return gVertex.Coplanar(joinedVertices);
+        }
+
+        /// <summary>
+        /// Performes a Union boolean operation between this polygon and a clipping one.
+        /// </summary>
+        /// <param name="clip"></param>
+        /// <returns></returns>
+        public List<gPolygon> Union(gPolygon clip)
+        {
+            
+            var swLine = new SweepLine(this, clip, SweepLineType.Boolean);
+
+            return swLine.ComputeBooleanOperation(BooleanType.Union);
+        }
+
+        /// <summary>
+        /// Performes a Difference boolean operation between this polygon and a clipping one.
+        /// </summary>
+        /// <param name="clip"></param>
+        /// <returns></returns>
+        public List<gPolygon> Difference(gPolygon clip)
+        {
+            var swLine = new SweepLine(this, clip, SweepLineType.Boolean);
+
+            return swLine.ComputeBooleanOperation(BooleanType.Differenece);
+        }
+
+        /// <summary>
+        /// Performes a Intersection boolean operation between this polygon and a clipping one.
+        /// </summary>
+        /// <param name="clip"></param>
+        /// <returns></returns>
+        public List<gPolygon> Intersection(gPolygon clip)
+        {
+            var swLine = new SweepLine(this, clip, SweepLineType.Boolean);
+
+            return swLine.ComputeBooleanOperation(BooleanType.Intersection);
         }
         #endregion
 

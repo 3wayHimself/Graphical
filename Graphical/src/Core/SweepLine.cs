@@ -106,7 +106,7 @@ namespace Graphical.Core
 
             edges.ForEach(e => this.AddNewEvent(e));
         }
-
+        // TODO: Seems that Q gets corrupted somehow. Check with Tests
         internal SweepLine(gPolygon subject, gPolygon clip, SweepLineType type)
         {
             this.sweepLineType = type;
@@ -144,19 +144,6 @@ namespace Graphical.Core
                 SweepLineType.Intersects);
         }
 
-
-        #endregion
-
-        #region Public Methods
-
-        public static List<gPolygon> Union(gPolygon main, gPolygon clip)
-        {
-            List<gEdge> edges = new List<gEdge>(main.Edges);
-            edges.AddRange(clip.Edges);
-            var swLine = new SweepLine(main, clip, SweepLineType.Boolean);
-
-            return swLine.ComputeBooleanOperation(BooleanType.Union);
-        }
 
         #endregion
 
@@ -737,6 +724,7 @@ namespace Graphical.Core
         internal bool IsValidEvent(SweepEvent swEvent)
         {
             bool subjectOut = swEvent.polygonType == PolygonType.Subject && !swEvent.IsInside.Value;
+            bool subjectIn = swEvent.polygonType == PolygonType.Subject && swEvent.IsInside.Value;
             bool clipIn = swEvent.polygonType == PolygonType.Clip && swEvent.IsInside.Value;
 
             switch (booleanType)
@@ -752,7 +740,7 @@ namespace Graphical.Core
                     swEvent.Label != SweepEventLabel.SameTransition;
 
                 case BooleanType.Intersection:
-                    return (!subjectOut || clipIn) &&
+                    return (subjectIn || clipIn) &&
                     swEvent.Label != SweepEventLabel.NoContributing;
                 default:
                     throw new Exception("WARNING! BooleanType is not set up");

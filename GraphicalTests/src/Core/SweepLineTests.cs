@@ -160,8 +160,18 @@ namespace Graphical.Core.Tests
                 gVertex.ByCoordinates(15, 0)
             });
 
-            List<gPolygon> swLine = SweepLine.Union(subject, clip);
-            Assert.IsTrue(swLine.Any());
+            //List<gPolygon> union = subject.Union(clip);
+            //Assert.AreEqual(2, union.Count);
+            List<gPolygon> difference = subject.Difference(clip);
+            Assert.AreEqual(2, difference.Count);
+            List<gPolygon> intersection = subject.Intersection(clip);
+            Assert.AreEqual(2, intersection.Count);
+        }
+
+        //[Test]
+        public void NoIntersectingPolygonBooleanTest()
+        {
+
         }
     }
 }
