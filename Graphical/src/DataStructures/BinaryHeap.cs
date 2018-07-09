@@ -100,9 +100,9 @@ namespace Graphical.DataStructures
             }
         }
 
-        private void EnsureCapacity()
+        private void EnsureCapacity(int itemsToAdd = 0)
         {
-            if(_size == _capacity)
+            if(_size + itemsToAdd >= _capacity)
             {
                 SetCapacity(_capacity * GROWTH_FACTOR);
             }
@@ -253,6 +253,21 @@ namespace Graphical.DataStructures
             _heapItems[_size] = item;
             _size++;
             HeapifyUp();
+        }
+
+        /// <summary>
+        /// Adds a range of TObjects to the Heap
+        /// </summary>
+        /// <param name="items">Set of items</param>
+        public virtual void AddRange(IEnumerable<TObject> items)
+        {
+            EnsureCapacity(items.Count());
+            foreach(var item in items)
+            {
+                _heapItems[_size] = item;
+                _size++;
+                HeapifyUp();
+            }
         }
 
         #endregion

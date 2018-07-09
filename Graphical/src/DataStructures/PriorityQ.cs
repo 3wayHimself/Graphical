@@ -69,6 +69,19 @@ namespace Graphical.DataStructures
         }
 
         /// <summary>
+        /// Adds a range of TObjects to the Heap
+        /// </summary>
+        /// <param name="items"></param>
+        public override void AddRange(IEnumerable<TObject> items)
+        {
+            foreach(TObject item in items)
+            {
+                heapIndices[item] = this.Size;
+                base.Add(item);
+            }
+        }
+
+        /// <summary>
         /// Updates the TObject item and restores the Heap property
         /// </summary>
         /// <param name="index">Existing TObject in Heap with new comparison value</param>
