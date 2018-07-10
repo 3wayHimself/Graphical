@@ -44,44 +44,17 @@ namespace Graphical.Core
     /// </summary>
     public class SweepLine
     {
-#if DEBUG
-        public List<int> coincidentCase = new List<int>();
-#endif
-
         #region Internal Properties
         internal SweepLineType sweepLineType;
         internal MinPriorityQ<SweepEvent> eventsQ;
+        internal List<SweepEvent> eventsList;
         internal List<SweepEvent> activeEvents;
-        internal List<gBase> intersections = null;
         internal IComparer<SweepEvent> verticalAscEventsComparer = new SortEventsVerticalAscendingComparer();
         internal gPolygon subject;
         internal gPolygon clip;
         #endregion
 
         #region Public Properties
-        /// <summary>
-        /// Intersections found on SweepLine method.
-        /// </summary>
-        public List<gBase> Intersections
-        {
-            get
-            {
-                if(intersections == null ) { intersections = FindIntersections(); }
-                return intersections;
-            }
-        }
-
-        /// <summary>
-        /// Determines if edges intersects
-        /// </summary>
-        public bool HasIntersection
-        {
-            get
-            {
-                return Intersections.Any();
-            }
-        }
-
         /// <summary>
         /// Returns the event below SweepEvent on index, null if none
         /// </summary>
@@ -101,19 +74,19 @@ namespace Graphical.Core
         internal SweepLine (List<gEdge> edges, SweepLineType type)
         {
             this.sweepLineType = type;
-            this.eventsQ = new MinPriorityQ<SweepEvent>(edges.Count * 2);
+            this.eventsList = new List<SweepEvent>(edges.Count * 2);
             this.activeEvents = new List<SweepEvent>(edges.Count);
 
             edges.ForEach(e => this.AddNewEvent(e));
         }
         // TODO: Seems that Q gets corrupted somehow. Check with Tests
-        internal SweepLine(gPolygon subject, gPolygon clip, SweepLineType type)
+        internal SweepLine (gPolygon subject, gPolygon clip, SweepLineType type)
         {
             this.sweepLineType = type;
             this.subject = subject;
             this.clip = clip;
             var totalEdges = subject.Edges.Count + clip.Edges.Count;
-            this.eventsQ = new MinPriorityQ<SweepEvent>(totalEdges * 2);
+            this.eventsList = new List<SweepEvent>(totalEdges * 2);
             this.activeEvents = new List<SweepEvent>(totalEdges);
 
             subject.Edges.ForEach(e => this.AddNewEvent(e, PolygonType.Subject));
@@ -144,6 +117,10 @@ namespace Graphical.Core
                 SweepLineType.Intersects);
         }
 
+        public static SweepLine BySubjectClipPolygons(gPolygon subject, gPolygon clip)
+        {
+            return new SweepLine(subject, clip, SweepLineType.Boolean);
+        }
 
         #endregion
 
@@ -170,28 +147,70 @@ namespace Graphical.Core
                 swEnd.polygonType = polType;
             }
 
-            eventsQ.Add(swStart);
-            eventsQ.Add(swEnd);
+            eventsList.AddItemSorted(swStart);
+            eventsList.AddItemSorted(swEnd);
         }
         
-        // TODO: Check no coplanar edges.
-        internal List<gBase> FindIntersections()
+        public bool HasIntersection()
         {
+            activeEvents = new List<SweepEvent>();
+            foreach(SweepEvent sw in eventsList)
+            {
+                if (!activeEvents.Any())
+                {
+                    activeEvents.Add(sw);
+                }
+                else if (sw.IsLeft)
+                {
+                    int index = activeEvents.BisectIndex(sw, verticalAscEventsComparer);
+                    activeEvents.Insert(index, sw);
+                    SweepEvent belowEvent = BelowEvent(index);
+                    SweepEvent aboveEvent = AboveEvent(index);
+
+                    if (belowEvent != null && sw.Edge.Intersects(belowEvent.Edge))
+                    {
+                        if(!belowEvent.Edge.Contains(sw.Vertex) && !belowEvent.Edge.Contains(sw.Pair.Vertex))
+                        {
+                            return true;
+                        }
+                    }
+                    if (aboveEvent != null && sw.Edge.Intersects(aboveEvent.Edge))
+                    {
+                        if (!aboveEvent.Edge.Contains(sw.Vertex) && !aboveEvent.Edge.Contains(sw.Pair.Vertex))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else
+                {
+                    int pairIndex = activeEvents.BisectIndex(sw.Pair, verticalAscEventsComparer) - 1;
+                    SweepEvent belowEvent = BelowEvent(pairIndex);
+                    SweepEvent aboveEvent = AboveEvent(pairIndex);
+
+                    activeEvents.RemoveAt(pairIndex);
+                    if (belowEvent != null && aboveEvent != null && belowEvent.Edge.Intersects(aboveEvent.Edge))
+                    {
+                        if (!belowEvent.Edge.Contains(aboveEvent.Vertex) && !belowEvent.Edge.Contains(aboveEvent.Pair.Vertex))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // TODO: Check no coplanar edges.
+        public List<gBase> GetIntersections()
+        {
+            activeEvents = new List<SweepEvent>();
             List<gBase> tempIntersections = new List<gBase>();
-#if DEBUG
-            int counter = 0;
-#endif
+            this.eventsQ = new MinPriorityQ<SweepEvent>(this.eventsList.Capacity);
+            this.eventsQ.AddRange(this.eventsList);
 
             while (eventsQ.Any())
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine("Loop #" + ++counter + " - Current Q:\n");
-                eventsQ.heapIndices
-                    .OrderBy(h => h.Value).ToList()
-                    .Select((h, i) => new { Index = i+1, Event = h.Key}).ToList()
-                    .ForEach(h => System.Diagnostics.Debug.WriteLine(h.Index + " - "+h.Event.ToString()));
-                System.Diagnostics.Debug.WriteLine("\n######\n");
-#endif
                 SweepEvent nextEvent = eventsQ.Take();
                 if (!activeEvents.Any())
                 {
@@ -225,9 +244,10 @@ namespace Graphical.Core
         {
             EventChainer chain = new EventChainer(boolType);
             List<gPolygon> computedPolygons = new List<gPolygon>();
-#if DEBUG
-            int counter = 0;
-#endif
+
+            this.eventsQ = new MinPriorityQ<SweepEvent>(this.eventsList.Capacity);
+            this.eventsQ.AddRange(this.eventsList);
+
             // If one of the polygons is empty
             if (subject.Edges.Count * clip.Edges.Count == 0)
             {
@@ -241,7 +261,7 @@ namespace Graphical.Core
                 }
             }
             // If they don't intersect
-            else if (!subject.BoundingBox.Intersects(clip.BoundingBox))
+            else if (!subject.Intersects(clip))
             {
                 computedPolygons.Add(subject);
                 if(boolType == BooleanType.Union)
@@ -253,14 +273,6 @@ namespace Graphical.Core
             {
                 while (eventsQ.Any())
                 {
-#if DEBUG
-                    System.Diagnostics.Debug.WriteLine("Loop #" + ++counter + " - Current Q:\n");
-                    eventsQ.heapIndices
-                        .OrderBy(h => h.Value).ToList()
-                        .Select((h, i) => new { Index = i + 1, Event = h.Key }).ToList()
-                        .ForEach(h => System.Diagnostics.Debug.WriteLine(h.Index + " - " + h.Event.ToString()));
-                    System.Diagnostics.Debug.WriteLine("\n######\n");
-#endif
                     SweepEvent nextEvent = eventsQ.Take();
                     if (!activeEvents.Any())
                     {
@@ -357,9 +369,6 @@ namespace Graphical.Core
                 // (next)--------------------(nextPair)
                 if (next.Equals(prev))
                 {
-#if DEBUG
-                    this.coincidentCase.Add(1);
-#endif
                     // Setting nextEvent as not contributing instead of deleting it
                     // as doing so will make it's pair a lonely poor thing.
                     next.Label = SweepEventLabel.NoContributing;
@@ -371,9 +380,6 @@ namespace Graphical.Core
                 // (next)--------------------(nextPair)
                 else if (prev.Vertex.Equals(next.Vertex))
                 {
-#if DEBUG
-                    this.coincidentCase.Add(2);
-#endif
                     // TODO: check this is true in all cases
                     gVertex dividingVtx = prev.Pair.Vertex;
                     UpdateEventPair(next, dividingVtx);
@@ -384,9 +390,6 @@ namespace Graphical.Core
                 //        (next)-------------(nextPair)
                 else if (prev.Pair.Vertex.Equals(next.Pair.Vertex))
                 {
-#if DEBUG
-                    this.coincidentCase.Add(3);
-#endif
                     // TODO: check this is true in all cases
                     gVertex dividingVtx = next.Vertex;
                     UpdateEventPair(prev, dividingVtx);
@@ -396,9 +399,6 @@ namespace Graphical.Core
                 //        (next)--------------------(nextPair)
                 else if (prev < next && prev.Pair < next.Pair)
                 {
-#if DEBUG
-                    this.coincidentCase.Add(4);
-#endif
                     // TODO: check this is true in all cases
                     gVertex prevDividingVtx = next.Vertex;
                     gVertex nextDividingVtx = prev.Pair.Vertex;
@@ -411,9 +411,6 @@ namespace Graphical.Core
                 //        (next)---(nextPair)
                 else if (prev < next && prev.Pair > next.Pair)
                 {
-#if DEBUG
-                    this.coincidentCase.Add(5);
-#endif
                     next.Label = SweepEventLabel.NoContributing;
                     gVertex dividingVtx = next.Vertex;
                     gVertex pairDividingVtx = next.Pair.Vertex;
@@ -426,9 +423,6 @@ namespace Graphical.Core
                 }
                 else
                 {
-#if DEBUG
-                    this.coincidentCase.Add(-1);
-#endif
                     throw new Exception("Case not contemplated? Damm!");
                 }
             }
@@ -450,11 +444,6 @@ namespace Graphical.Core
                 next.IsInside = false;
                 next.InOut = false;
             }
-            //// They intersect as coincident edges
-            //else if (next.Equals(prev))
-            //{
-
-            //}
             // They intersect on the event's vertices
             else if (next.polygonType == prev.polygonType)
             {
@@ -469,282 +458,6 @@ namespace Graphical.Core
             }
             
         }
-
     }
 
-    /// <summary>
-    /// Class to hold information about Vertex and Edges on 
-    /// the SweepLine algorithm. SweepEvents are compared by X, then Y coordinates
-    /// of the vertex. If same vertex, Pairs are compared insted.
-    /// </summary>
-    public class SweepEvent : IEquatable<SweepEvent>, IComparable<SweepEvent>
-    {
-        internal PolygonType polygonType;
-
-        #region Public Properties
-        /// <summary>
-        /// Vertex associated with the event
-        /// </summary>
-        public gVertex Vertex { get; set; }
-
-        /// <summary>
-        /// SweepEvent pair
-        /// </summary>
-        public SweepEvent Pair { get; set; }
-
-        /// <summary>
-        /// Edge associated with the event
-        /// </summary>
-        public gEdge Edge { get; set; }
-
-        /// <summary>
-        /// Determines if SweepEvent comes first on a left to right direction
-        /// </summary>
-        public bool IsLeft { get; set; }
-
-        /// <summary>
-        /// Flags if associated edge is inside other polygon on boolean operations
-        /// </summary>
-        public bool? IsInside { get; set; }
-
-
-        /// <summary>
-        /// Flags if the associated edge represents an in-out transition into the polygon
-        /// in an upwards, y-axis direction.
-        /// </summary>
-        public bool? InOut { get; set; }
-
-        /// <summary>
-        /// Label to define how a SweepEvent contributes to a polygon boolean operation.
-        /// </summary>
-        public SweepEventLabel Label;
-
-        #endregion
-
-        #region Constructor
-        /// <summary>
-        /// SweepEvent default constructor
-        /// </summary>
-        /// <param name="vertex"></param>
-        /// <param name="edge"></param>
-        public SweepEvent(gVertex vertex, gEdge edge)
-        {
-            this.Vertex = vertex;
-            this.Edge = edge;
-        }
-        #endregion
-
-        /// <summary>
-        /// Updates the edge and Pair event with a new gVertex
-        /// </summary>
-        /// <param name="newPairVertex"></param>
-        public void UpdatePairVertex(gVertex newPairVertex)
-        {
-            this.Edge = gEdge.ByStartVertexEndVertex(this.Vertex, newPairVertex);
-            this.Pair = new SweepEvent(newPairVertex, this.Edge)
-            {
-                Pair = this,
-                IsLeft = !this.IsLeft,
-                polygonType = this.polygonType
-            };
-        }
-
-        /// <summary>
-        /// SweepEvent comparer.
-        /// A SweepEvent is considered less than other if having smaller X, then Y and then Z.
-        /// </summary>
-        /// <param name="other"></param>
-        /// <returns></returns>
-        public int CompareTo(SweepEvent other)
-        {
-            if(other == null) { return -1; }
-            // If same Vertex, compare pairs
-            if (this.Vertex.Equals(other.Vertex))
-            {
-                if (this.Pair.Vertex.Equals(other.Pair.Vertex))
-                {
-                    return 0;
-                }
-                else
-                {
-                    return this.Pair.CompareTo(other.Pair);
-                }
-            }
-            // If same X
-            else if(this.Vertex.X.AlmostEqualTo(other.Vertex.X))
-            {
-                // If same Y
-                if(this.Vertex.Y.AlmostEqualTo(other.Vertex.Y))
-                {
-                    return this.Vertex.Z.CompareTo(other.Vertex.Z);
-                }
-                else
-                {
-                    return this.Vertex.Y.CompareTo(other.Vertex.Y);
-                }
-            }else
-            {
-                return this.Vertex.X.CompareTo(other.Vertex.X);
-            }
-        }
-
-        /// <summary>
-        /// SweepEvent equality comparer. SweepEvents are considered equals if have the same edge.
-        /// </summary>
-        /// <param name="other"></param>
-        /// <returns></returns>
-        public bool Equals(SweepEvent other)
-        {
-            return this.Edge.Equals(other.Edge);
-        }
-
-        /// <summary>
-        /// Less Than operator
-        /// </summary>
-        /// <param name="sw1"></param>
-        /// <param name="sw2"></param>
-        /// <returns></returns>
-        public static bool operator <(SweepEvent sw1, SweepEvent sw2)
-        {
-            return sw1.CompareTo(sw2) == -1;
-        }
-
-        /// <summary>
-        /// Greater Than operator
-        /// </summary>
-        /// <param name="sw1"></param>
-        /// <param name="sw2"></param>
-        /// <returns></returns>
-        public static bool operator >(SweepEvent sw1, SweepEvent sw2)
-        {
-            return sw1.CompareTo(sw2) == 1;
-        }
-
-        /// <summary>
-        /// Less or Equal Than operator
-        /// </summary>
-        /// <param name="sw1"></param>
-        /// <param name="sw2"></param>
-        /// <returns></returns>
-        public static bool operator <=(SweepEvent sw1, SweepEvent sw2)
-        {
-            return sw1.CompareTo(sw2) <= 0;
-        }
-
-        /// <summary>
-        /// Greater or Equal Than operator
-        /// </summary>
-        /// <param name="sw1"></param>
-        /// <param name="sw2"></param>
-        /// <returns></returns>
-        public static bool operator >=(SweepEvent sw1, SweepEvent sw2)
-        {
-            return sw1.CompareTo(sw2) >= 0;
-        }
-
-        /// <summary>
-        /// SweepEvent string override
-        /// </summary>
-        /// <returns></returns>
-        public override string ToString()
-        {
-            return String.Format("(Vertex:{0}, Pair:{1})", this.Vertex.ToString(), this.Pair.Vertex.ToString());
-        }
-    }
-
-    /// <summary>
-    /// Custom Vertical Ascending IComparer for SweepEvent.
-    /// Lower SweepEvent has lowest X. At same X, lowest Y and finally lowest Z.
-    /// </summary>
-    internal class SortEventsVerticalAscendingComparer : IComparer<SweepEvent>
-    {
-        /// <summary>
-        /// Custom SweepEvent Vertical Ascending Comparer
-        /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <returns></returns>
-        public int Compare(SweepEvent x, SweepEvent y)
-        {
-            if (x.Vertex.Equals(y.Vertex))
-            {
-                if (x.Pair.Vertex.Equals(y.Pair.Vertex))
-                {
-                    return 0;
-                }
-                else
-                {
-                    return Compare(x.Pair, y.Pair);
-                }
-            }
-            // If same Y, below is the one with lower X
-            else if (x.Vertex.Y.AlmostEqualTo(y.Vertex.Y))
-            {
-                // If same X, below is the one with lower Z
-                if (x.Vertex.X.AlmostEqualTo(y.Vertex.X))
-                {
-                    return x.Vertex.Z.CompareTo(y.Vertex.Z);
-                }
-                else
-                {
-                    return x.Vertex.X.CompareTo(y.Vertex.X);
-                }
-            }
-            else
-            {
-                return x.Vertex.Y.CompareTo(y.Vertex.Y);
-            }
-        }
-    }
-
-    internal class EventChainer
-    {
-        internal BooleanType booleanType;
-        internal Graphical.Graphs.Graph graph = new Graphs.Graph();
-
-        public EventChainer(BooleanType booleanType)
-        {
-            this.booleanType = booleanType;
-        }
-
-        public void Add(SweepEvent swEvent)
-        {
-            if (IsValidEvent(swEvent))
-            {
-                graph.AddEdge(swEvent.Edge);
-            }
-        }
-
-        public List<gPolygon> GetPolygons()
-        {
-            graph.BuildPolygons();
-            return graph.Polygons;
-        }
-
-        internal bool IsValidEvent(SweepEvent swEvent)
-        {
-            bool subjectOut = swEvent.polygonType == PolygonType.Subject && !swEvent.IsInside.Value;
-            bool subjectIn = swEvent.polygonType == PolygonType.Subject && swEvent.IsInside.Value;
-            bool clipIn = swEvent.polygonType == PolygonType.Clip && swEvent.IsInside.Value;
-
-            switch (booleanType)
-            {
-                case BooleanType.Union:
-                    return !swEvent.IsInside.Value &&
-                    swEvent.Label != SweepEventLabel.NoContributing &&
-                    swEvent.Label != SweepEventLabel.DifferentTransition;
-
-                case BooleanType.Differenece:
-                    return (subjectOut || clipIn) &&
-                    swEvent.Label != SweepEventLabel.NoContributing &&
-                    swEvent.Label != SweepEventLabel.SameTransition;
-
-                case BooleanType.Intersection:
-                    return (subjectIn || clipIn) &&
-                    swEvent.Label != SweepEventLabel.NoContributing;
-                default:
-                    throw new Exception("WARNING! BooleanType is not set up");
-            }
-        }
-    }
 }

@@ -67,6 +67,11 @@ namespace Graphical.Geometry
             double x = (v1.X + v2.X) / 2, y = (v1.Y + v2.Y) / 2, z = (v1.Z + v2.Z) / 2;
             return new gVertex(x, y, z);
         }
+
+        public static gVertex Origin()
+        {
+            return new gVertex(0, 0, 0);
+        }
         #endregion
                 
         public static List<gVertex> OrderByRadianAndDistance (List<gVertex> vertices, gVertex centre = null)

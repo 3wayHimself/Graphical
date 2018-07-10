@@ -238,7 +238,7 @@ namespace Graphical.Graphs
             foreach(gVertex v in vertices)
             {
                 // If already belongs to a polygon or is not a polygon vertex or already computed
-                if( computedVertices.Contains(v) || v.polygonId >= 0 || graph[v].Count > 2) { continue; }
+                if( computedVertices.Contains(v) || graph[v].Count > 2) { continue; }
 
                 computedVertices.Add(v);
                 gPolygon polygon = new gPolygon(GetNextId(), false);
@@ -290,7 +290,6 @@ namespace Graphical.Graphs
                                 polygon.edges.Reverse();
                                 polygon.Vertices.Reverse();
                                 break; //it will go the other way around
-                                //currentEdge = connectedEdges.Where(e => !computedVertices.Contains(e.GetVertexPair(currentVertex))).First();
                             }
                         }
                         else

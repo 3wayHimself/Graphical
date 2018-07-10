@@ -70,5 +70,14 @@ namespace Graphical.Geometry.Tests
             Assert.IsFalse(pol1.ContainsEdge(gEdge.ByStartVertexEndVertex(vtx1, vtx4)));
 
         }
+
+        [Test]
+        public void RegularPolygon()
+        {
+            var square = gPolygon.ByCenterRadiusAndSides(gVertex.Origin(), 10, 4);
+
+            Assert.AreEqual(gVertex.ByCoordinates(0, 10, 0), square.Vertices[0]);
+            Assert.AreEqual(gVertex.ByCoordinates(10, 0, 0), square.Vertices[1]);
+        }
     }
 }

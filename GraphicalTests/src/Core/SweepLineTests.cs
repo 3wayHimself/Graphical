@@ -46,8 +46,8 @@ namespace Graphical.Core.Tests
             };
 
             SweepLine swLine = SweepLine.ByEdges(edges);
-            Assert.AreEqual(true, swLine.HasIntersection);
-            Assert.AreEqual(4, swLine.Intersections.Count);
+            Assert.AreEqual(true, swLine.HasIntersection());
+            Assert.AreEqual(4, swLine.GetIntersections().Count);
         }
 
         [Test]
@@ -72,8 +72,8 @@ namespace Graphical.Core.Tests
             };
 
             SweepLine swLine = SweepLine.ByEdges(edges);
-            Assert.AreEqual(true, swLine.HasIntersection);
-            Assert.AreEqual(1, swLine.Intersections.Count);
+            Assert.AreEqual(true, swLine.HasIntersection());
+            Assert.AreEqual(1, swLine.GetIntersections().Count);
             //Assert.AreEqual(2, swLine.Intersections.Count);
         }
 
@@ -95,8 +95,7 @@ namespace Graphical.Core.Tests
                 gEdge.ByStartVertexEndVertex(a2, a1)
             };
             SweepLine slSameEdges = SweepLine.ByEdges(sameEdges);
-            Assert.AreEqual(1, slSameEdges.Intersections.Count);
-            Assert.AreEqual(1, slSameEdges.coincidentCase[0]);
+            Assert.AreEqual(1, slSameEdges.GetIntersections().Count);
 
             List<gEdge> sameStart = new List<gEdge>()
             {
@@ -104,8 +103,7 @@ namespace Graphical.Core.Tests
                 gEdge.ByStartVertexEndVertex(b1, a1)
             };
             SweepLine slSameStart = SweepLine.ByEdges(sameStart);
-            Assert.AreEqual(1, slSameStart.Intersections.Count);
-            Assert.AreEqual(2, slSameStart.coincidentCase[0]);
+            Assert.AreEqual(1, slSameStart.GetIntersections().Count);
 
             List<gEdge> sameEnd = new List<gEdge>()
             {
@@ -113,8 +111,7 @@ namespace Graphical.Core.Tests
                 gEdge.ByStartVertexEndVertex(a2, b1)
             };
             SweepLine slSameEnd = SweepLine.ByEdges(sameEnd);
-            Assert.AreEqual(1, slSameEnd.Intersections.Count);
-            Assert.AreEqual(new List<int>() { 3, 1 }, slSameEnd.coincidentCase);
+            Assert.AreEqual(1, slSameEnd.GetIntersections().Count);
 
             List<gEdge> overlapping = new List<gEdge>()
             {
@@ -122,8 +119,7 @@ namespace Graphical.Core.Tests
                 gEdge.ByStartVertexEndVertex(b2, b1)
             };
             SweepLine slOverlapping = SweepLine.ByEdges(overlapping);
-            Assert.AreEqual(1, slOverlapping.Intersections.Count);
-            Assert.AreEqual(new List<int>() { 4, 1 }, slOverlapping.coincidentCase);
+            Assert.AreEqual(1, slOverlapping.GetIntersections().Count);
 
             List<gEdge> containing = new List<gEdge>()
             {
@@ -131,13 +127,7 @@ namespace Graphical.Core.Tests
                 gEdge.ByStartVertexEndVertex(a2, b1)
             };
             SweepLine slContaining = SweepLine.ByEdges(containing);
-            Assert.AreEqual(1, slContaining.Intersections.Count);
-            Assert.AreEqual(new List<int>() { 5, 1 }, slContaining.coincidentCase);
-
-
-
-
-
+            Assert.AreEqual(1, slContaining.GetIntersections().Count);
         }
 
         [Test]
@@ -159,13 +149,10 @@ namespace Graphical.Core.Tests
                 gVertex.ByCoordinates(32, 5),
                 gVertex.ByCoordinates(15, 0)
             });
-
-            //List<gPolygon> union = subject.Union(clip);
-            //Assert.AreEqual(2, union.Count);
-            List<gPolygon> difference = subject.Difference(clip);
-            Assert.AreEqual(2, difference.Count);
-            List<gPolygon> intersection = subject.Intersection(clip);
-            Assert.AreEqual(2, intersection.Count);
+            
+            Assert.AreEqual(2, subject.Union(clip).Count);
+            Assert.AreEqual(2, subject.Difference(clip).Count);
+            Assert.AreEqual(2, subject.Intersection(clip).Count);
         }
 
         //[Test]
@@ -173,5 +160,39 @@ namespace Graphical.Core.Tests
         {
 
         }
+
+        [Test]
+        public void NotIntersectingPolygons()
+        {
+            var clip = gPolygon.ByVertices(new List<gVertex>()
+            {
+                gVertex.ByCoordinates(0, 0),
+                gVertex.ByCoordinates(0, 10),
+                gVertex.ByCoordinates(15, 5),
+                gVertex.ByCoordinates(15, 0)
+            });
+            var subject = gPolygon.ByVertices(new List<gVertex>()
+            {
+                gVertex.ByCoordinates(0, 12.5),
+                gVertex.ByCoordinates(0, 20),
+                gVertex.ByCoordinates(7.5, 20),
+                gVertex.ByCoordinates(15, 20),
+                gVertex.ByCoordinates(15, 7.5)
+            });
+
+            var swLine = SweepLine.BySubjectClipPolygons(subject, clip);
+            Assert.IsFalse(swLine.HasIntersection());
+            Assert.AreEqual(2, subject.Union(clip).Count);
+
+            var intersection = subject.Intersection(clip);
+            Assert.AreEqual(1, intersection.Count);
+            Assert.AreEqual(5, intersection[0].Vertices.Count);
+
+            var difference = subject.Difference(clip);
+            Assert.AreEqual(1, difference.Count);
+            Assert.AreEqual(5, difference[0].Vertices.Count);
+        }
     }
+
+
 }

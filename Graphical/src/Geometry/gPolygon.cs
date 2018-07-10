@@ -99,6 +99,24 @@ namespace Graphical.Geometry
             }
             return polygon;
         }
+
+        public static gPolygon ByCenterRadiusAndSides(gVertex center, double radius, int sides)
+        {
+            // TODO: create polygon by plane?
+            if(sides < 3) { throw new ArgumentOutOfRangeException("sides", "Any polygon must have at least 3 sides."); }
+            List<gVertex> vertices = new List<gVertex>();
+            double angle = (Math.PI * 2) / sides;
+            for(var i = 0; i < sides; i++)
+            {
+                var vertex = gVertex.ByCoordinates(
+                        (Math.Sin(i * angle) * radius) + center.X,
+                        (Math.Cos(i * angle) * radius) + center.Y,
+                        center.Z
+                        );
+                vertices.Add(vertex);
+            }
+            return gPolygon.ByVertices(vertices);
+        }
         #endregion
 
         #region Internal Methods
@@ -217,6 +235,18 @@ namespace Graphical.Geometry
         }
 
         /// <summary>
+        /// Determines if two polygons are intersecting
+        /// </summary>
+        /// <param name="polygon"></param>
+        /// <returns></returns>
+        public bool Intersects(gPolygon polygon)
+        {
+            if (!this.BoundingBox.Intersects(polygon.BoundingBox)) { return false; }
+            var sw = new SweepLine(this, polygon, SweepLineType.Intersects);
+            return sw.HasIntersection();
+        }
+        
+        /// <summary>
         /// Performes a Union boolean operation between this polygon and a clipping one.
         /// </summary>
         /// <param name="clip"></param>
@@ -227,6 +257,21 @@ namespace Graphical.Geometry
             var swLine = new SweepLine(this, clip, SweepLineType.Boolean);
 
             return swLine.ComputeBooleanOperation(BooleanType.Union);
+        }
+
+        public static List<gPolygon> Union(List<gPolygon> subjects, List<gPolygon> clips)
+        {
+            List<gPolygon> result = new List<gPolygon>(subjects);
+            int count = 0;
+            foreach (gPolygon clip in clips)
+            {
+                for (var i = count; i < result.Count; i++)
+                {
+                    result.AddRange(result[i].Union(clip));
+                    count++;
+                }
+            }
+            return result;
         }
 
         /// <summary>
@@ -241,6 +286,21 @@ namespace Graphical.Geometry
             return swLine.ComputeBooleanOperation(BooleanType.Differenece);
         }
 
+        public static List<gPolygon> Difference(List<gPolygon> subjects, List<gPolygon> clips)
+        {
+            List<gPolygon> result = new List<gPolygon>(subjects);
+            int count = 0;
+            foreach (gPolygon clip in clips)
+            {
+                for(var i = count; i < result.Count; i++)
+                {
+                    result.AddRange(result[i].Difference(clip));
+                    count++;
+                }
+            }
+            return result;
+        }
+
         /// <summary>
         /// Performes a Intersection boolean operation between this polygon and a clipping one.
         /// </summary>
@@ -252,6 +312,22 @@ namespace Graphical.Geometry
 
             return swLine.ComputeBooleanOperation(BooleanType.Intersection);
         }
+
+        public static List<gPolygon> Intersection(List<gPolygon> subjects, List<gPolygon> clips)
+        {
+            List<gPolygon> result = new List<gPolygon>(subjects);
+            int count = 0;
+            foreach (gPolygon clip in clips)
+            {
+                for (var i = count; i < result.Count; i++)
+                {
+                    result.AddRange(result[i].Intersection(clip));
+                    count++;
+                }
+            }
+            return result;
+        }
+
         #endregion
 
         /// <summary>
